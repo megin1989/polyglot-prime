@@ -44,15 +44,15 @@ public class NeedAttentionController {
         return "redirect:/data-quality/needs-attention";
     } 
 
-    @GetMapping("/needs-attention/scn-to-qe")
-    @RouteMapping(label = "CrossRoads SCN to (QE)", title = "Needs Attention -", siblingOrder = 5)
-    public String diagnosticsFhirNeedsAttentionScnToQe(final Model model, final HttpServletRequest request) {
+    // @GetMapping("/needs-attention/scn-to-qe")
+    // @RouteMapping(label = "CrossRoads SCN to (QE)", title = "Needs Attention -", siblingOrder = 5)
+    // public String diagnosticsFhirNeedsAttentionScnToQe(final Model model, final HttpServletRequest request) {
  
-    model.addAttribute("qeName", request.getParameter("qeName"));
-    String templateName = "page/diagnostics/scn-to-qe"; 
-    return presentation.populateModel(templateName, model, request);
+    // model.addAttribute("qeName", request.getParameter("qeName"));
+    // String templateName = "page/diagnostics/scn-to-qe"; 
+    // return presentation.populateModel(templateName, model, request);
 
-    }
+    // }
 
     @GetMapping("/needs-attention/qe-to-techbd")
     @RouteMapping(label = "(QE) to Tech by Design", title = "Needs Attention -", siblingOrder = 6)
@@ -65,12 +65,12 @@ public class NeedAttentionController {
     }
 
 
-    @GetMapping("/needs-attention/techbd-to-scoring-engine")
-    @RouteMapping(label = "Tech by Design to Scoring Engine", title = "Needs Attention -", siblingOrder = 7)
+    @GetMapping("/needs-attention/techbd-to-data-lake")
+    @RouteMapping(label = "Tech by Design to Data Lake", title = "Needs Attention -", siblingOrder = 7)
     public String diagnosticsFhirNeedsAttentionTechbdToScoringEngine(final Model model, final HttpServletRequest request) {
  
     model.addAttribute("qeName", request.getParameter("qeName"));
-    String templateName = "page/diagnostics/techbd-to-scoring-engine"; 
+    String templateName = "page/diagnostics/techbd-to-data-lake"; 
     return presentation.populateModel(templateName, model, request);
 
     }

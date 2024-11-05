@@ -26,7 +26,6 @@
             font-weight: bold;
             margin: 12px 0px 11px 2px;
         }
-      
     </style>
     <!-- if JSON Viewer is not already in the layout, add the following -->
     <!-- <script src="https://unpkg.com/@alenaksu/json-viewer@2.0.0/dist/json-viewer.bundle.js"></script> -->
@@ -78,7 +77,7 @@
                 arrow.style.cursor = 'pointer';
                 arrow.style.marginRight = '5px';
 
-                button.innerText = params.data.scoring_engine_submissions;
+                button.innerText = params.data.datalake_engine_submissions;
                 button.style.marginLeft = '5px';
 
                 container.appendChild(arrow);
@@ -86,7 +85,7 @@
 
                 container.addEventListener('click', () => {
                     // Set buttonPressed before expanding
-                    params.node.data.buttonPressed = 'scoring_engine_submissions';
+                    params.node.data.buttonPressed = 'datalake_engine_submissions';
                     params.node.setExpanded(!params.node.expanded);
                     arrow.innerText = params.node.expanded ? '▼' : '▶';
                 });
@@ -96,12 +95,12 @@
 
             function qeNameCellRenderer(params) {
                 const qeName = params.data.qe_name;
-                const link = `/needs-attention/techbd-to-scoring-engine?qeName=${qeName}`;
+                const link = `/needs-attention/techbd-to-data-lake?qeName=${qeName}`;
                 return `<a href="${link}" style="text-decoration:underline">${qeName}</a>`;
                 // return `${qeName}`;
             }
 
- 
+
 
             const detailGridOptions2 = {
                 columnDefs: [
@@ -109,20 +108,20 @@
                         headerName: "Interaction Id",
                         field: "hub_interaction_id",
                         filter: "agTextColumnFilter",
-                         headerTooltip: "Unique Id For Identify The Record",
+                        headerTooltip: "Unique Id For Identify The Record",
                         cellRenderer: params => {
                             const hub_interaction_id = params.value;
-                           // const error_type = params.data.error_type;
+                            // const error_type = params.data.error_type;
                             const sat_interaction_http_request_id = params.data.sat_interaction_http_request_id;
                             const button = document.createElement('button');
                             button.innerText = hub_interaction_id;
                             button.style.textDecoration = 'underline';
-                            button.addEventListener('click', () => { 
-                                    modalAide.viewFetchedJsonValue(window.shell.serverSideUrl(`/api/ux/tabular/jooq/${schemaName}/interaction_http_fhir_request/sat_interaction_http_request_id/${sat_interaction_http_request_id}.json`));
+                            button.addEventListener('click', () => {
+                                modalAide.viewFetchedJsonValue(window.shell.serverSideUrl(`/api/ux/tabular/jooq/${schemaName}/interaction_http_fhir_request/sat_interaction_http_request_id/${sat_interaction_http_request_id}.json`));
                             });
                             return button;
                         }
-                    }, 
+                    },
                     { headerName: "Submission Date", field: "created_at", filter: "agDateColumnFilter" },
                 ],
                 detailRowHeight: 280,
@@ -133,7 +132,7 @@
 
 
             const gridOptions = {
-                columnDefs: [ 
+                columnDefs: [
                     {
                         headerName: "QE Name",
                         field: "qe_name",
@@ -142,28 +141,15 @@
                         headerTooltip: "Name of the Qualified Entity"
                     },
                     {
-                        headerName: "SCN to QE",                        
-                        field: "cross_roads_scn",
-                        filter: "agTextColumnFilter", 
-                        headerTooltip: "FHIR File count from CrossRoads SCN to QE"
-                    },
-                    {
                         headerName: "QE to Tech by Design",
                         field: "qe_total_submissions",
                         filter: "agTextColumnFilter",
-                        cellStyle: function (params) {
-                            if (params.data.cross_roads_scn !== params.data.qe_total_submissions) {
-                                return { color: 'red' };
-                            }
-                            return null;
-                        },
                         headerTooltip: "FHIR File count from QE to Tech by Design"
                     },
                     {
-                        headerName: "Tech by Design to Scoring Engine", 
+                        headerName: "Tech by Design to Scoring Engine",
                         field: "scoring_engine_submissions",
                         filter: "agTextColumnFilter",
-                        cellRenderer: cellRenderer2,
                         cellStyle: function (params) {
                             if (params.data.qe_total_submissions !== params.data.scoring_engine_submissions) {
                                 return { color: 'red' };
@@ -173,36 +159,35 @@
                         headerTooltip: "FHIR File count from Tech by Design to Scoring Engine"
                     },
                     {
-                        headerName: "Scoring Engine to SHIN-NY",
-                        field: "shinny",
+                        headerName: "Tech by Design to Data Lake",
+                        field: "datalake_engine_submissions",
                         filter: "agTextColumnFilter",
-                        headerTooltip: "FHIR File count from Scoring Engine to SHIN-NY"
-                    },
-                    {
-                        headerName: "SHIN-NY to MDW",
-                        field: "mdw",
-                        filter: "agTextColumnFilter",
-                        headerTooltip: "FHIR File count from SHIN-NY to MDW"
+                        cellRenderer: cellRenderer2,
+                        cellStyle: function (params) {
+                            if (params.data.scoring_engine_submissions !== params.data.datalake_engine_submissions) {
+                                return { color: 'red' };
+                            }
+                            return null;
+                        },
+                        headerTooltip: "FHIR File count from Tech by Design to Data Lake"
                     }
                 ],
                 masterDetail: true,
                 detailCellRendererParams: (params) => {
-
- 
-                        return {
-                            detailGridOptions: detailGridOptions2,
-                            getDetailRowData: function (params) {
-                                const value = params.data.qe_name;
-                                fetch(window.shell.serverSideUrl(`/api/ux/tabular/jooq/${schemaName}/${detailTableViewName}/qe_name/${value}.json`))
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        params.successCallback(data);
-                                    });
-                            }, defaultColDef: {
-                                flex: 1,
-                                filter: true,
-                            },
-                        }; 
+                    return {
+                        detailGridOptions: detailGridOptions2,
+                        getDetailRowData: function (params) {
+                            const value = params.data.qe_name;
+                            fetch(window.shell.serverSideUrl(`/api/ux/tabular/jooq/${schemaName}/${detailTableViewName}/qe_name/${value}.json`))
+                                .then(response => response.json())
+                                .then(data => {
+                                    params.successCallback(data);
+                                });
+                        }, defaultColDef: {
+                            flex: 1,
+                            filter: true,
+                        },
+                    };
 
                 }
             };
@@ -229,7 +214,7 @@
 
             // Add date-range text 
             // Inject the date range into the HTML
-            helpers.injectDateRangeText('date-range', 'This widget compares the count of incoming synthetic files at each stage in the data processing pipeline, from the SCN to the QE, then to the Scoring Engine, SHIN-NY Data Lake, and finally to the MDW from <b>{startDate}</b> to <b>{endDate}</b>. It provides a clear view of data movement and processing consistency, highlighting discrepancies or drop-offs in the number of files between stages. This comparison helps in identifying potential issues and ensures the integrity of the data flow across the system.');
+            helpers.injectDateRangeText('date-range', 'This widget compares the count of incoming synthetic files at each stage in the data processing pipeline, from the QE to Tech by Design, then to the Scoring Engine, and finally to Data Lake from <b>{startDate}</b> to <b>{endDate}</b>. It provides a clear view of data movement and processing consistency, highlighting discrepancies or drop-offs in the number of files between stages. This comparison helps in identifying potential issues and ensures the integrity of the data flow across the system.');
         });
 
     </script>
@@ -244,14 +229,15 @@
             </div>
             <h1 class="assemtion">Assumptions</h1>
             <ul class="list-disc pl-4">
-                <li>The file count from CrossRoads SCN to QE FHIR should match.</li>
                 <li>The file count from QE FHIR to Tech by Design should match.</li>
                 <li>The file count from Tech by Design to the Scoring Engines should match.</li>
+                <li>The file count from Tech by Design to Data Lake should match.</li>
                 <li>If any of the numbers in one column do not match the corresponding numbers in another column, it
                     indicates an error, and the mismatched numbers are highlighted in red.</li>
                 <li>If there are errors or issues, clicking on the red arrow before the count text allows for a
                     drill-down to see the detailed numbers.</li>
-                <li>When viewing the numbers, clicking on them will open a popup containing the interaction details.</li>
+                <li>When viewing the numbers, clicking on them will open a popup containing the interaction details.
+                </li>
             </ul>
 
         </div>

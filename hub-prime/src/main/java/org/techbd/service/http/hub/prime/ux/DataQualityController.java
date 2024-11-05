@@ -48,7 +48,7 @@ public class DataQualityController {
         String templateName = "page/diagnostics/needs-attention";
         if (null != request.getParameter("qeName")) {
             model.addAttribute("qeName", request.getParameter("qeName"));
-            templateName = "page/diagnostics/techbd-to-scoring-engine";
+            templateName = "page/diagnostics/techbd-to-data-lake";
         }
         return presentation.populateModel(templateName, model, request);
     }
