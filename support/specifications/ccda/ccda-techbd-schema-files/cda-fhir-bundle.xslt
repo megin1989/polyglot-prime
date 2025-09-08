@@ -299,6 +299,7 @@
 
                 <xsl:variable name="raceSystem">
                   <xsl:choose>
+                    <xsl:when test="$raceCode = 'UNK' or $raceCode = 'ASKU'">http://terminology.hl7.org/CodeSystem/v3-NullFlavor</xsl:when>
                     <xsl:when test="@code">urn:oid:<xsl:value-of select="@codeSystem"/></xsl:when>
                     <xsl:otherwise></xsl:otherwise>
                   </xsl:choose>
@@ -587,7 +588,7 @@
             }
           </xsl:when>
         </xsl:choose>
-        <xsl:if test="string(ccda:encounterParticipant/@typeCode) and string(ccda:encounterParticipant/ccda:assignedEntity/ccda:id/@extension)">
+        <xsl:if test="string(ccda:encounterParticipant/@typeCode) and (string(ccda:encounterParticipant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:given) or string(ccda:encounterParticipant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:family))">
         , "participant": [
                 {
                   <xsl:if test="string(ccda:encounterParticipant/@typeCode)">
@@ -605,24 +606,18 @@
                         }
                       ]
                     </xsl:if>
-                    <xsl:if test="string(ccda:encounterParticipant/ccda:assignedEntity/ccda:id/@extension) or string(ccda:encounterParticipant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:given)  or string(ccda:encounterParticipant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:family)">
+                    <xsl:if test="string(ccda:encounterParticipant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:given)  or string(ccda:encounterParticipant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:family)">
                     , "individual": {
-                        <xsl:if test="string(ccda:encounterParticipant/ccda:assignedEntity/ccda:id/@extension)"> 
-                          "reference": "Practitioner/<xsl:value-of select="ccda:encounterParticipant/ccda:assignedEntity/ccda:id/@extension"/>",
-                        </xsl:if>
                         "display": "<xsl:value-of select="concat(ccda:encounterParticipant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:given, ' ', ccda:encounterParticipant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:family)"/>"
                     }
                     </xsl:if>
                 }
             ]
         </xsl:if> 
-        <xsl:if test="string(ccda:location/ccda:healthCareFacility/ccda:id/@extension) or string(ccda:location/ccda:healthCareFacility/ccda:location/ccda:name)">
+        <xsl:if test="string(ccda:location/ccda:healthCareFacility/ccda:location/ccda:name)">
         , "location": [
             {
                 "location": {
-                    <xsl:if test="string(ccda:location/ccda:healthCareFacility/ccda:id/@extension)"> 
-                      "reference": "Location/<xsl:value-of select="ccda:location/ccda:healthCareFacility/ccda:id/@extension"/>",
-                    </xsl:if>
                     "display": "<xsl:value-of select="ccda:location/ccda:healthCareFacility/ccda:location/ccda:name"/>"
                 }
             }
@@ -713,7 +708,7 @@
             }
           </xsl:when>
         </xsl:choose>
-        <xsl:if test="string(ccda:participant/@typeCode) and string(ccda:participant/ccda:assignedEntity/ccda:id/@extension)">
+        <xsl:if test="string(ccda:participant/@typeCode) and (string(ccda:participant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:given) or string(ccda:participant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:family))">
         , "participant": [
                 {
                     <xsl:if test="string(ccda:participant/@typeCode)"> 
@@ -731,25 +726,19 @@
                         }
                       ]
                     </xsl:if>
-                    <xsl:if test="string(ccda:participant/ccda:assignedEntity/ccda:id/@extension) or string(ccda:participant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:given)  or string(ccda:participant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:family)">
+                    <xsl:if test="string(ccda:participant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:given)  or string(ccda:participant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:family)">
                     , "individual": {
-                        <xsl:if test="string(ccda:participant/ccda:assignedEntity/ccda:id/@extension)"> 
-                          "reference": "Practitioner/<xsl:value-of select="ccda:participant/ccda:assignedEntity/ccda:id/@extension"/>",
-                        </xsl:if>
                         "display": "<xsl:value-of select="concat(ccda:participant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:given, ' ', ccda:participant/ccda:assignedEntity/ccda:assignedPerson/ccda:name/ccda:family)"/>"
                     }
                     </xsl:if>
                 }
             ]
         </xsl:if>
-        <xsl:if test="string(ccda:location/ccda:healthCareFacility/ccda:id/@extension) or string(ccda:location/ccda:healthCareFacility/ccda:location/ccda:name)">
+        <xsl:if test="string(ccda:participant/ccda:participantRole/ccda:playingEntity/ccda:name)">
         , "location": [
             {
                 "location": {
-                    <xsl:if test="string(ccda:location/ccda:healthCareFacility/ccda:id/@extension)"> 
-                      "reference": "Location/<xsl:value-of select="ccda:location/ccda:healthCareFacility/ccda:id/@extension"/>",
-                    </xsl:if>
-                    "display": "<xsl:value-of select="ccda:location/ccda:healthCareFacility/ccda:location/ccda:name"/>"
+                    "display": "<xsl:value-of select="ccda:participant/ccda:participantRole/ccda:playingEntity/ccda:name"/>"
                 }
             }
         ]
@@ -1027,15 +1016,6 @@
           "status": "<xsl:call-template name='mapObservationStatus'>
                         <xsl:with-param name='statusCode' select='ccda:statusCode/@code'/>
                     </xsl:call-template>",
-          "category": [
-            {
-              "coding": [{
-                  "system": "http://terminology.hl7.org/CodeSystem/observation-category",
-                  "code": "social-history",
-                  "display": "Social History"
-              }]
-            }
-          ],
           "code": {
             "coding": [
               {
@@ -1144,8 +1124,26 @@
                                     <xsl:with-param name="questionCode" select="$questionCode"/>
                                     <xsl:with-param name="categoryCode" select="$categoryCode"/>
                                   </xsl:call-template>"
-                    }]
-                  },
+                    }
+                    <xsl:choose>
+                      <xsl:when test="string($categoryCode) = 'sdoh-category-unspecified'">
+                        <xsl:choose>
+                          <xsl:when test="ccda:observation/ccda:code/@code = '96782-8'">
+                            , {
+                                "system": "http://snomed.info/sct",
+                                "code": "365458002",
+                                "display": "Education and/or schooling finding"
+                              }
+                          </xsl:when>
+                        </xsl:choose>
+                      </xsl:when>
+                    </xsl:choose>
+                  ],
+                  "text" : "<xsl:call-template name="mapSDOHCategoryText">
+                              <xsl:with-param name="questionCode" select="$questionCode"/>
+                              <xsl:with-param name="categoryCode" select="$categoryCode"/>
+                            </xsl:call-template>"
+                },
                 {
                   "coding": [{
                       "system": "http://terminology.hl7.org/CodeSystem/observation-category",
@@ -1584,6 +1582,28 @@
 </xsl:template>
 
 <xsl:template name="mapSDOHCategoryCodeDisplay">
+  <xsl:param name="questionCode"/>
+  <xsl:param name="categoryCode"/>
+  <xsl:choose>
+    <xsl:when test="$questionCode = '71802-3'">Housing Instability</xsl:when>
+    <xsl:when test="$questionCode = '96778-6'">Inadequate Housing</xsl:when>
+    <xsl:when test="$questionCode = '96779-4'">Utility Insecurity</xsl:when>
+    <xsl:when test="$questionCode = '88122-7' or $questionCode = '88123-5'">Food Insecurity</xsl:when>
+    <xsl:when test="$questionCode = '93030-5'">Transportation Insecurity</xsl:when>
+    <xsl:when test="$questionCode = '96780-2'">Employment Status</xsl:when>
+    <xsl:when test="$questionCode = '96782-8' or
+                    $questionCode = '95618-5' or 
+                    $questionCode = '95617-7' or 
+                    $questionCode = '95616-9' or 
+                    $questionCode = '95615-1' or 
+                    $questionCode = '95614-4'">SDOH Category Unspecified</xsl:when>
+    <xsl:otherwise>
+      <xsl:value-of select="$categoryCode"/>
+    </xsl:otherwise>
+  </xsl:choose>
+</xsl:template>
+
+<xsl:template name="mapSDOHCategoryText">
   <xsl:param name="questionCode"/>
   <xsl:param name="categoryCode"/>
   <xsl:choose>

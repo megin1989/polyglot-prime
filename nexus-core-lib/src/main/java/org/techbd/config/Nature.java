@@ -20,11 +20,16 @@ public enum Nature {
     ORIGINAL_FLAT_FILE_CSV("Original Flat File CSV"),
     CSV_VALIDATION_RESULT("CSV Validation Result"),
     CSV_TO_FHIR_CONVERSION("CSV to FHIR Conversion"),
+    UPDATE_ZIP_FILE_PROCESSING_DETAILS("Update Zip File Processing Details"),
 
     CONVERTED_TO_FHIR("Converted to FHIR"),
     // CCD
     ORIGINAL_CCDA_PAYLOAD("Original CCDA Payload"),
-    CCDA_VALIDATION_RESULT("CCDA Validation Result");
+    CCDA_VALIDATION_RESULT("CCDA Validation Result"),
+
+     // HL7
+     ORIGINAL_HL7_PAYLOAD("Original HL7 Payload"),
+     HL7_VALIDATION_RESULT("HL7 Validation Result");
 
     private final String description;
 

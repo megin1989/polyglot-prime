@@ -1,152 +1,191 @@
-# Nexus Ingestion API
+# IngestionAPI Overview
 
-This Spring Boot controller handles large file and JSON-based ingestion requests, saving payloads and metadata to **Amazon S3**, and publishing notifications to **Amazon SQS**.
+**IngestionAPI** is a source-agnostic data ingestion service that supports multiple transport protocols including **HTTPS**, **MLLP**, and **SOAP**. It is designed to reliably handle healthcare data payloads and integrate seamlessly with downstream AWS services.
 
-## Features
+## Key Features
 
-- Handles FHIR and CCDA `Bundle` JSON POST requests.
-- Handles `multipart/form-data` file uploads (`.zip` only).
-- Stores incoming payloads in AWS S3 with metadata.
-- Publishes ingestion notifications to AWS SQS FIFO queue.
-- Automatically generates metadata for each request.
-- Graceful error handling and logging.
+- **Multi-Protocol Support**  
+  Accepts messages over:
+  - **HTTPS (REST)**
+  - **MLLP** (commonly used for HL7v2 messages)
+  - **SOAP** (for legacy systems integration)
 
-## Endpoints
+- **Automatic Acknowledgement Generation**  
+  The system automatically generates and returns **well-structured acknowledgements (ACKs)** upon receiving a message:
+  - **MLLP**: HL7 ACK messages
+  - **SOAP**: Standards-compliant SOAP responses
+  - **HTTPS**: Structured HTTP JSON responses
 
-### 1. FHIR / CCDA JSON Bundles
+  These acknowledgements confirm receipt and ensure interoperability with external systems.
 
-**POST** `/Bundle`, `/Bundle/`,  
-**POST** `/Bundle/$validate`, `/Bundle/$validate/`,  
-**POST** `/ccda/Bundle`, `/ccda/Bundle/`,  
-**POST** `/ccda/Bundle/$validate`, `/ccda/Bundle/$validate/`
+- **File Handling and Metadata**  
+  Upon receiving any message (regardless of protocol):
+  - A unique `interactionId` and a `timestamp` are generated.
+  - The file is uploaded to Amazon S3 under a structured path:  
+    ```
+    s3://<bucket-name>/data/<YYYY>/<MM>/<DD>/<timestamp>-<interactionId>-<filename>
+    ```
+  - Metadata is generated and stored as a JSON file:  
+    ```
+    s3://<bucket-name>/metadata/<YYYY>/<MM>/<DD>/<timestamp>/<interactionId>/metadata.json
+    ```
 
-#### Request
-- **Headers**:
-  - `x-tenant-id` – (optional) Tenant identifier
-  - `User-Agent` – (optional) Source system identifier
-  - `Content-Disposition` – (optional) Filename hint
-- **Body**: Raw JSON payload of FHIR/CCDA bundle
+- **Sample S3 Metadata**
+  ```json
+  {
+  "key": "data/<YYYY>/<MM>/<DD>/<timestamp>-<interactionId>-<fileName>.zip",
+  "json_metadata": {
+    "headers": "<Map of request headers including IP and Port headers like x-real-ip, x-forwarded-for, x-server-ip, x-server-port>",
+    "interactionId": "<UUID>",
+    "fileName": "<file-name>.zip",
+    "queryParams": null,
+    "sourceSystem": "<source-system>",
+    "s3DataObjectPath": "s3://<s3-bucket-name>/data/<YYYY>/<MM>/<DD>/<timestamp>-<interactionId>-<fileName>.<fileextension>",
+    "s3AckMessageObjectPath": "s3://<s3-bucket-name>/data/<YYYY>/<MM>/<DD>/<timestamp>-<interactionId>-<fileName>-ack.<fileextension>",
+    "protocol": "<protocol-version>",
+    "uploadDate": "<YYYY-MM-DD>",
+    "fileSize": "<file-size-in-bytes>",
+    "requestUrl": "/ingest",
+    "localAddress": "<local-address>",
+    "tenantId": "<tenant-id-or-unknown>",
+    "fullRequestUrl": "http://<hostname>/ingest",
+    "remoteAddress": "<remote-address>",
+    "timestamp": "<epoch-timestamp-in-ms>"
+  }
+  ```
+- **Structured Messaging to Amazon SQS**  
+  A message is pushed to **Amazon SQS** with a deterministic `messageGroupId` to ensure **FIFO** ordering and grouping.
 
-#### Response
-```json
-{
-  "messageId": "sqs-message-id",
-  "interactionId": "uuid",
-  "fullS3Path": "s3://bucket/path/to/file.json",
-  "timestamp": "millisecondsSinceEpoch"
-}
-```
+- **SQS Message Group ID Construction**  
+  Each message sent to SQS includes a `messageGroupId` that uniquely identifies the source-destination network context. This helps maintain ordered processing within a group.
 
----
+  **Message Group ID Logic:**
+  ```text
+  messageGroupId = <source_ip>_<destination_ip>_<port>
 
-### 2. CSV ZIP Bundle Upload
+  #### Source IP
 
-**POST** `/flatfile/csv/Bundle`,  
-**POST** `/flatfile/csv/Bundle/$validate`
+  The source IP is extracted from request headers, in the following order:
 
-#### Request
-- **Content-Type**: `multipart/form-data`
-- **Form Field**: `file` – must be a `.zip` file
-- **Headers**:
-  - `x-tenant-id` – (optional)
-  - `User-Agent` – (optional)
+  - `x-forwarded-for` (primary source, typically set by reverse proxies like NGINX or load balancers)
+  - Fallback to `x-real-ip` if `x-forwarded-for` is absent
 
-#### Response
-```json
-{
-  "messageId": "sqs-message-id",
-  "interactionId": "uuid",
-  "fullS3Path": "s3://bucket/path/to/file.zip",
-  "timestamp": "millisecondsSinceEpoch"
-}
-```
+  #### Destination IP and Port
 
----
+  These are obtained from internal headers added by the gateway or internal networking layer:
 
-## Running the application
-Run the command `mvn clean compile spring-boot:run` to start the application. It will be using the default port `8080`.
+  - `x-server-ip`
+  - `x-server-port`
+
+  This combination of client and destination IP/port forms a stable and traceable message group identity, used to construct the `messageGroupId`.
+  ```
+
+  **Note** : Accurate population of these headers by upstream infrastructure is crucial to maintain correct SQS grouping behavior.
 
 
-## Metadata Saved to S3
+- **Sample SQS Message**
+  ```json
+  {
+    "tenantId": "<tenantId>",
+    "interactionId": "<uuid-interaction-id>",
+    "requestUrl": "<originalRequestUrl>",
+    "timestamp": "<epochMilliTimestamp>",
+    "fileName": "<uploadedFileName>",
+    "fileSize": "<fileSizeInBytes>",
+    "s3ObjectId": "<s3ObjectKey>",
+    "s3DataObjectPath": "s3://<bucketName>/<s3ObjectKey>",
+    "s3AckMessageObjectPath": "s3://<bucketName>/<s3AckObjectKey>",
+    "messageGroupId": "<sourceIp>_<destinationIp>_<destinationPort>",
+    "s3Response": "Uploaded to S3: <s3ObjectKey> (ETag: \"<etagValue>\")"
+  }
+  ```
 
-For each request, a metadata file is saved with the following structure:
+- **HTTPS Upload**
+  - Accepts `multipart/form-data` with zip or data files.
+  - Payloads can be tested via the following cURL:
 
-```json
-{
-  "tenantId": "example-tenant",
-  "interactionId": "uuid",
-  "msgType": "fhir | ccda | csv",
-  "uploadDate": "yyyy-MM-dd",
-  "timestamp": "millisecondsSinceEpoch",
-  "fileName": "original_filename",
-  "fileSize": "bytes",
-  "sourceSystem": "Mirth Connect",
-  "s3ObjectPath": "s3://bucket/path/to/file",
-  "headers": [
-    { "headerName": "value" },
-    ...
-  ]
-}
-```
+  ```bash
+  curl -X POST http://<hostname>/ingest \
+    -H "X-TechBD-Tenant-ID: <TENANT_ID>" \
+    -F "file=@<PATH_TO_ZIP_FILE>;type=application/zip"
+  ```
 
----
+  - Health check:
 
-## SQS Notification Payload
+  ```bash
+  curl http://<hostname>/
+  ```
+  
+- **MLLP (Minimal Lower Layer Protocol)**
+  - The application listens on ports defined via the `HL7_MLLP_PORTS` environment variable:
 
-A message is sent to the FIFO queue with:
+  ```bash
+  export HL7_MLLP_PORTS=2575,2576-2580
+  ```
 
-```json
-{
-  "tenantId": "example-tenant",
-  "interactionId": "uuid",
-  "requestUrl": "/Bundle",
-  "msgType": "fhir",
-  "timestamp": "millisecondsSinceEpoch",
-  "fileName": "original_filename",
-  "fileSize": "bytes",
-  "s3ObjectId": "path/to/file",
-  "s3ObjectPath": "s3://bucket/path/to/file"
-}
-```
+  - Apache Camel routes are dynamically created during deployment for these ports.
+  - HL7 messages received via MLLP will receive an **ACK** with an **InteractionID** included in the `NTE` segment:
 
----
+  ```
+  MSH|^~\&|ReceivingApp|ReceivingFac|SendingApp|SendingFac|20250723103935.413+0000||ACK^A01^ACK|301|P|2.5.1
+  MSA|AA|MSG00001
+  NTE|1||InteractionID: 522a160f-e56e-4e9f-a412-17a63ce89da5
+  ```
 
-## Exception Handling
+  - Health check for MLLP:
 
-If any error occurs during processing, a JSON response is returned:
+  ```bash
+  curl http://<hostname>/actuator/health/mllp
+  ```
+     - Example Response for health check***
+      ```
+      {
+        "status": "UP",
+        "details": {
+          "MLLP Ports": {
+            "Port 2575": "UP",
+            "Port 2576": "UP",
+            "Port 2577": "UP"
+          }
+        }
+      }
+      ```
 
-```json
-{
-  "error": "Error message"
-}
-```
+  **Note** :This health check only verifies that the application is actively listening on the expected port.
+    It does not validate whether the network layer is correctly provisioned to accept traffic to this port —
+    including configurations such as NLB, security groups, firewall rules, or routing settings.
 
----
 
-## Configuration & Dependencies
+- **SOAP Endpoints**
+  - SOAP routes support **PIX** and **PNR** requests.
+  - Standard SOAP acknowledgements are returned.
 
-Make sure the following are configured:
+- **Feature Flags via Togglz**
+  Togglz is used to dynamically enable or disable features at runtime.
 
-- `Constants.BUCKET_NAME` – Target S3 bucket name
-- `Constants.FIFO_Q_URL` – SQS FIFO queue URL
-- AWS credentials must be configured for:
-  - `software.amazon.awssdk.services.s3.S3Client`
-  - `software.amazon.awssdk.services.sqs.SqsClient`
-- `AwsService` should implement:
-  - `saveToS3(String bucket, String key, String content, Map<String, String> metadata)`
-  - `saveToS3(Map<String, String> headers, MultipartFile file)`
+- **🔍 DEBUG_LOG_REQUEST_HEADERS**
+  Logs all incoming HTTP headers when enabled. Useful for debugging HTTPS/MLLP issues.
 
----
+  ```yaml
+  togglz:
+    enabled: true
+    features:
+      DEBUG_LOG_REQUEST_HEADERS:
+        enabled: true
+  ```
 
-## Logging
+  If  `DEBUG_LOG_REQUEST_HEADERS` is enabled headers available in request can be viewed in **CloudWatch** using either the `interactionId` or by searching `DEBUG_LOG_REQUEST_HEADERS`.
 
-All errors and key process milestones are logged using `Slf4j`.
+- **📲 Togglz REST API Endpoints**
 
----
+  | Endpoint | Description |
+  |----------|-------------|
+  | `GET /api/features/{featureName}` | Check status of a feature |
+  | `POST /api/features/{featureName}/enable` | Enable a feature |
+  | `POST /api/features/{featureName}/disable` | Disable a feature |
 
-## Notes
+  **Example Usage**:
 
-- Only `.zip` files are allowed for multipart upload.
-- JSON requests are validated via file extension and endpoint paths.
-- Metadata filenames are generated using UUID and timestamp.
-- Interaction tracking is implemented via `interactionId`.
+  ```bash
+  curl -X POST http://<hostname>:8080/api/features/DEBUG_LOG_REQUEST_HEADERS/enable
+  ```

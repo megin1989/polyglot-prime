@@ -17,8 +17,6 @@ import org.hl7.fhir.r4.model.Meta;
 import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.StringType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.techbd.config.CoreUdiPrimeJpaConfig;
@@ -27,7 +25,9 @@ import org.techbd.model.csv.QeAdminData;
 import org.techbd.model.csv.ScreeningObservationData;
 import org.techbd.model.csv.ScreeningProfileData;
 import org.techbd.service.csv.CodeLookupService;
+import org.techbd.util.AppLogger;
 import org.techbd.util.DateUtil;
+import org.techbd.util.TemplateLogger;
 import org.techbd.util.csv.CsvConstants;
 import org.techbd.util.csv.CsvConversionUtil;
 
@@ -37,11 +37,12 @@ import org.techbd.util.csv.CsvConversionUtil;
 @Component
 @Order(1)
 public class OrganizationConverter extends BaseConverter {
-
-    public OrganizationConverter(CodeLookupService codeLookupService,final CoreUdiPrimeJpaConfig coreUdiPrimeJpaConfig) {
+    private final TemplateLogger LOG;
+    public OrganizationConverter(CodeLookupService codeLookupService,final CoreUdiPrimeJpaConfig coreUdiPrimeJpaConfig, AppLogger appLogger) {
         super(codeLookupService,coreUdiPrimeJpaConfig);
+        LOG = appLogger.getLogger(OrganizationConverter.class);
     }
-    private static final Logger LOG = LoggerFactory.getLogger(OrganizationConverter.class.getName());
+
 
     /**
      * Returns the resource type associated with this converter.
@@ -127,15 +128,25 @@ public class OrganizationConverter extends BaseConverter {
         if (StringUtils.isNotEmpty(data.getOrganizationTypeCode()) || StringUtils.isNotEmpty(data.getOrganizationTypeDisplay())) {
             CodeableConcept type = new CodeableConcept();
 
-            // Create a new Coding object
-            Coding coding = new Coding();
-            
-            String organizationTypeCode = fetchCode(data.getOrganizationTypeCode(), CsvConstants.ORGANIZATION_TYPE_CODE, interactionId);
-            coding.setSystem(fetchSystem(organizationTypeCode, data.getOrganizationTypeCodeSystem(), CsvConstants.ORGANIZATION_TYPE_CODE, interactionId) );
-            coding.setCode(organizationTypeCode);
-            coding.setDisplay(data.getOrganizationTypeDisplay());
+            // Split codes and displays
+            String[] codes = StringUtils.defaultString(data.getOrganizationTypeCode()).split(";");
+            String[] displays = StringUtils.defaultString(data.getOrganizationTypeDisplay()).split(";");
 
-            type.addCoding(coding);
+            for (int i = 0; i < codes.length; i++) {
+                String rawCode = codes[i].trim();
+                if (StringUtils.isNotEmpty(rawCode)) {
+                    String code = fetchCode(rawCode, CsvConstants.ORGANIZATION_TYPE_CODE, interactionId);
+                    String display = (i < displays.length) ? displays[i].trim() : null;
+                    display = fetchDisplay(code, display, CsvConstants.ORGANIZATION_TYPE_CODE, interactionId);
+
+                    Coding coding = new Coding();
+                    coding.setCode(code);
+                    coding.setDisplay(display);
+                    coding.setSystem(fetchSystem(code, data.getOrganizationTypeCodeSystem(), CsvConstants.ORGANIZATION_TYPE_CODE, interactionId));
+
+                    type.addCoding(coding);
+                }
+            }
 
             organization.setType(Collections.singletonList(type));
         }
@@ -156,7 +167,12 @@ public class OrganizationConverter extends BaseConverter {
                 fullAddressText += ", " + qrAdminData.getFacilityCity();
             }
             if (StringUtils.isNotEmpty(qrAdminData.getFacilityState())) {
-                fullAddressText += ", " + qrAdminData.getFacilityState();
+                if(qrAdminData.getFacilityState().equalsIgnoreCase("New York")) {
+                    address.setState("NY");
+                    fullAddressText += ", " + address.getState();
+                } else {
+                    fullAddressText += ", " + fetchCode(qrAdminData.getFacilityState(), CsvConstants.STATE, interactionId);
+                }
             }
             if (StringUtils.isNotEmpty(qrAdminData.getFacilityZip())) {
                 fullAddressText += " " + qrAdminData.getFacilityZip();
@@ -176,7 +192,6 @@ public class OrganizationConverter extends BaseConverter {
 
             address.setCity(qrAdminData.getFacilityCity());
             address.setDistrict(qrAdminData.getFacilityCounty());
-            address.setState(fetchCode(qrAdminData.getFacilityState(), CsvConstants.STATE, interactionId));
             address.setPostalCode(qrAdminData.getFacilityZip());
 
             organization.addAddress(address);

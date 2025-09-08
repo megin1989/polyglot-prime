@@ -25,6 +25,8 @@ import org.techbd.config.CoreUdiPrimeJpaConfig;
 import org.techbd.service.dataledger.CoreDataLedgerApiClient.Action;
 import org.techbd.service.dataledger.CoreDataLedgerApiClient.Actor;
 import org.techbd.service.dataledger.CoreDataLedgerApiClient.DataLedgerPayload;
+import org.techbd.util.AppLogger;
+import org.techbd.util.TemplateLogger;
 
 class DataLedgerApiClientTest {
 
@@ -37,11 +39,16 @@ class DataLedgerApiClientTest {
     private static MockedStatic<HttpClient> mockedHttpClient;
     private static HttpClient httpClient;
     private CoreDataLedgerApiClient coreDataLedgerApiClient;
+    private static AppLogger appLogger;
+    private static TemplateLogger templateLogger;
 
     @BeforeAll
     static void init() {
         mockedHttpClient = mockStatic(HttpClient.class);
         httpClient = mock(HttpClient.class);
+        appLogger = mock(AppLogger.class);
+        templateLogger = mock(TemplateLogger.class);
+        when(appLogger.getLogger(CoreDataLedgerApiClient.class)).thenReturn(templateLogger);
         mockedHttpClient.when(HttpClient::newHttpClient).thenReturn(httpClient);
     }
 
@@ -53,7 +60,7 @@ class DataLedgerApiClientTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        coreDataLedgerApiClient = new CoreDataLedgerApiClient(coreAppConfig,coreUdiPrimeJpaConfig);
+        coreDataLedgerApiClient = new CoreDataLedgerApiClient(coreAppConfig,coreUdiPrimeJpaConfig,appLogger);
         when(mock(org.jooq.DSLContext.class).configuration()).thenReturn(mock(org.jooq.Configuration.class));
     }
 

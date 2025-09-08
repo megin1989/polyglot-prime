@@ -1,8 +1,10 @@
 package org.techbd.converters.csv;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.exceptions.FHIRException;
@@ -24,8 +26,6 @@ import org.hl7.fhir.r4.model.Patient.PatientCommunicationComponent;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.StringType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.techbd.config.CoreUdiPrimeJpaConfig;
@@ -34,18 +34,20 @@ import org.techbd.model.csv.QeAdminData;
 import org.techbd.model.csv.ScreeningObservationData;
 import org.techbd.model.csv.ScreeningProfileData;
 import org.techbd.service.csv.CodeLookupService;
+import org.techbd.util.AppLogger;
 import org.techbd.util.DateUtil;
+import org.techbd.util.TemplateLogger;
 import org.techbd.util.csv.CsvConstants;
 import org.techbd.util.csv.CsvConversionUtil;
 
 @Component
 @Order(2)
 public class PatientConverter extends BaseConverter {
-
-    public PatientConverter(CodeLookupService codeLookupService,final CoreUdiPrimeJpaConfig coreUdiPrimeJpaConfig) {
+    private final TemplateLogger LOG;
+    public PatientConverter(CodeLookupService codeLookupService,final CoreUdiPrimeJpaConfig coreUdiPrimeJpaConfig, AppLogger appLogger) {
         super(codeLookupService,coreUdiPrimeJpaConfig);
+        LOG = appLogger.getLogger(PatientConverter.class);
     }
-    private static final Logger LOG = LoggerFactory.getLogger(PatientConverter.class.getName());
 
     /**
      * Returns the resource type associated with this converter.
@@ -148,68 +150,120 @@ public class PatientConverter extends BaseConverter {
         }
 
         if (StringUtils.isNotEmpty(demographicData.getEthnicityCode())) {
-            Extension ethnicityExtension = new Extension("http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity");
+            String[] rawCodes = demographicData.getEthnicityCode().split(";");
+            List<String> validCodes = Arrays.stream(rawCodes)
+                .map(String::trim)
+                .filter(code -> !("ASKU".equalsIgnoreCase(code) || "UNK".equalsIgnoreCase(code)))
+                .collect(Collectors.toList());
 
-            String[] ethnicityCodes = fetchCode(demographicData.getEthnicityCode(), CsvConstants.ETHNICITY_CODE, interactionId).split(";");
+            if (!validCodes.isEmpty()) {
+                Extension ethnicityExtension = new Extension("http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity");
 
-            String ethnicityCodeDesc = demographicData.getEthnicityCodeDescription();
-            String[] ethnicityDescriptions = new String[ethnicityCodes.length];
-            StringBuilder ethnicityTextBuilder = new StringBuilder();
+                String[] ethnicityCodes = fetchCode(String.join(";", validCodes), CsvConstants.ETHNICITY_CODE, interactionId).split(";");
+                String ethnicityCodeDesc = demographicData.getEthnicityCodeDescription();
+                String[] ethnicityDescriptions = new String[ethnicityCodes.length];
+                StringBuilder ethnicityTextBuilder = new StringBuilder();
 
-            for (int i = 0; i < ethnicityCodes.length; i++) {
-                String trimmedCode = ethnicityCodes[i].trim();
-                String display = fetchDisplay(trimmedCode, ethnicityCodeDesc, CsvConstants.ETHNICITY_CODE, interactionId);
+                for (int i = 0; i < ethnicityCodes.length; i++) {
+                    String trimmedCode = ethnicityCodes[i].trim();
+                    String display = fetchDisplay(trimmedCode, ethnicityCodeDesc, CsvConstants.ETHNICITY_CODE, interactionId);
 
-                ethnicityDescriptions[i] = display;
+                    ethnicityDescriptions[i] = display;
 
-                Extension ombCategoryExtension = new Extension(getOmbEthnicityCategory(trimmedCode, interactionId));
-                String system = fetchSystem(ethnicityCodes[i].trim(), demographicData.getEthnicityCodeSystem(), CsvConstants.ETHNICITY_CODE, interactionId);
+                    Extension ombCategoryExtension = new Extension(getOmbEthnicityCategory(trimmedCode, interactionId));
+                    String system = fetchSystem(trimmedCode, demographicData.getEthnicityCodeSystem(), CsvConstants.ETHNICITY_CODE, interactionId);
 
-                ombCategoryExtension.setValue(new Coding()
-                        .setSystem(system)
-                        .setCode(trimmedCode)
-                        .setDisplay(display));
+                    ombCategoryExtension.setValue(new Coding()
+                            .setSystem(system)
+                            .setCode(trimmedCode)
+                            .setDisplay(display));
 
-                ethnicityExtension.addExtension(ombCategoryExtension);
+                    ethnicityExtension.addExtension(ombCategoryExtension);
 
-                if (StringUtils.isNotBlank(display)) {
-                    if (ethnicityTextBuilder.length() > 0) ethnicityTextBuilder.append(", ");
-                    ethnicityTextBuilder.append(display.trim());
+                    if (StringUtils.isNotBlank(display)) {
+                        if (ethnicityTextBuilder.length() > 0) ethnicityTextBuilder.append(", ");
+                        ethnicityTextBuilder.append(display.trim());
+                    }
                 }
-            }
 
-            if (ethnicityTextBuilder.length() > 0) {
-                ethnicityExtension.addExtension(new Extension("text", new StringType(ethnicityTextBuilder.toString())));
-            }
+                if (ethnicityTextBuilder.length() > 0) {
+                    ethnicityExtension.addExtension(new Extension("text", new StringType(ethnicityTextBuilder.toString())));
+                }
 
-            patient.addExtension(ethnicityExtension);
+                patient.addExtension(ethnicityExtension);
+            }
         }
         
 
         if (StringUtils.isNotEmpty(demographicData.getSexAtBirthCode())) {
+            String sexAtBirthCode = fetchCode(demographicData.getSexAtBirthCode(), CsvConstants.SEX_AT_BIRTH_CODE, interactionId);
+            if (!"ASKU".equalsIgnoreCase(sexAtBirthCode) && !"OTH".equalsIgnoreCase(sexAtBirthCode)) {
             Extension birthSexExtension = new Extension("http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex");
-            birthSexExtension.setValue(new CodeType(fetchCode(demographicData.getSexAtBirthCode(), CsvConstants.SEX_AT_BIRTH_CODE, interactionId))); // Use CodeType for valueCode
+            birthSexExtension.setValue(new CodeType(sexAtBirthCode)); // Use CodeType for valueCode
             patient.addExtension(birthSexExtension);
+            }
         }
 
         if (StringUtils.isNotEmpty(demographicData.getPersonalPronounsCode())) {
+            String[] codes = demographicData.getPersonalPronounsCode().split(";");
+            String[] displays = StringUtils.defaultString(demographicData.getPersonalPronounsDescription()).split(";");
+
             Extension pronounsExtension = new Extension("http://shinny.org/us/ny/hrsn/StructureDefinition/shinny-personal-pronouns");
-            String personalPronounsCode = fetchCode(demographicData.getPersonalPronounsCode(), CsvConstants.PERSONAL_PRONOUNS_CODE, interactionId);
-            pronounsExtension.setValue(new CodeableConcept().addCoding(new Coding()
-                    .setSystem(fetchSystem(personalPronounsCode, demographicData.getPersonalPronounsSystem(), CsvConstants.PERSONAL_PRONOUNS_CODE, interactionId))
-                    .setCode(personalPronounsCode)
-                    .setDisplay(demographicData.getPersonalPronounsDescription())));
-            patient.addExtension(pronounsExtension);
+            CodeableConcept concept = new CodeableConcept();
+
+            for (int i = 0; i < codes.length; i++) {
+                String rawCode = codes[i].trim();
+                if (StringUtils.isNotEmpty(rawCode)) {
+                    String code = fetchCode(rawCode, CsvConstants.PERSONAL_PRONOUNS_CODE, interactionId);
+                    String display = (i < displays.length) ? displays[i].trim() : null;
+                    display = fetchDisplay(code, display, CsvConstants.PERSONAL_PRONOUNS_CODE, interactionId);
+
+                    Coding coding = new Coding()
+                        .setSystem(fetchSystem(code, demographicData.getPersonalPronounsSystem(), CsvConstants.PERSONAL_PRONOUNS_CODE, interactionId))
+                        .setCode(code)
+                        .setDisplay(display);
+
+                    concept.addCoding(coding);
+                }
+            }
+
+            if (!concept.getCoding().isEmpty()) {
+                pronounsExtension.setValue(concept);
+                patient.addExtension(pronounsExtension);
+            }
         }
 
         if (StringUtils.isNotEmpty(demographicData.getGenderIdentityCode())) {
+            String[] rawCodes = demographicData.getGenderIdentityCode().split(";");
+            String[] systems = StringUtils.defaultString(demographicData.getGenderIdentityCodeSystem()).split(";");
+            String[] descriptions = StringUtils.defaultString(demographicData.getGenderIdentityCodeDescription()).split(";");
+
             Extension genderIdentityExtension = new Extension("http://shinny.org/us/ny/hrsn/StructureDefinition/shinny-gender-identity");
-            String genderIdentityCode = fetchCode(demographicData.getGenderIdentityCode(), CsvConstants.GENDER_IDENTITY_CODE, interactionId);
-            genderIdentityExtension.setValue(new CodeableConcept().addCoding(new Coding()
-                    .setSystem(fetchSystem(genderIdentityCode, demographicData.getGenderIdentityCodeSystem(), CsvConstants.GENDER_IDENTITY_CODE, interactionId))
-                    .setCode(genderIdentityCode)
-                    .setDisplay(demographicData.getGenderIdentityCodeDescription())));
-            patient.addExtension(genderIdentityExtension);
+            CodeableConcept genderConcept = new CodeableConcept();
+
+            for (int i = 0; i < rawCodes.length; i++) {
+                String rawCode = rawCodes[i].trim();
+                if (StringUtils.isNotEmpty(rawCode) &&
+                    !rawCode.equalsIgnoreCase("ASKU") &&
+                    !rawCode.equalsIgnoreCase("asked-declined")) {
+
+                    String code = fetchCode(rawCode, CsvConstants.GENDER_IDENTITY_CODE, interactionId);
+                    String system = fetchSystem(code, (i < systems.length ? systems[i].trim() : null), CsvConstants.GENDER_IDENTITY_CODE, interactionId);
+                    String display = fetchDisplay(code, (i < descriptions.length ? descriptions[i].trim() : null), CsvConstants.GENDER_IDENTITY_CODE, interactionId);
+
+                    Coding coding = new Coding()
+                        .setSystem(system)
+                        .setCode(code)
+                        .setDisplay(display);
+
+                    genderConcept.addCoding(coding);
+                }
+            }
+
+            if (!genderConcept.getCoding().isEmpty()) {
+                genderIdentityExtension.setValue(genderConcept);
+                patient.addExtension(genderIdentityExtension);
+            }
         }
     }
     private static Patient populatePatientName(Patient patient, DemographicData demographicData) {
@@ -352,7 +406,11 @@ public class PatientConverter extends BaseConverter {
             .filter(StringUtils::isNotEmpty)
             .ifPresent(address::addLine);
             address.setCity(data.getCity());
-            address.setState(fetchCode(data.getState(), CsvConstants.STATE, interactionId));
+            if(data.getState().equalsIgnoreCase("New York")) {
+                address.setState("NY");
+            } else {
+                address.setState(fetchCode(data.getState(), CsvConstants.STATE, interactionId));
+            }
             Optional.ofNullable(data.getCounty())
                     .filter(StringUtils::isNotEmpty)
                     .ifPresent(address::setDistrict);
@@ -360,7 +418,7 @@ public class PatientConverter extends BaseConverter {
                     .filter(StringUtils::isNotEmpty)
                     .ifPresent(address::setPostalCode);
             String addressText = String.format("%s %s, %s %s", address.getLine().get(0), address.getCity(),
-                fetchCode(data.getState(), CsvConstants.STATE, interactionId), address.getPostalCode());
+                address.getState(), address.getPostalCode());
             address.setText(addressText);
 
             patient.addAddress(address);
@@ -375,7 +433,7 @@ public class PatientConverter extends BaseConverter {
                     Coding coding = new Coding();
                     coding.setSystem(fetchSystem(langCode, data.getPreferredLanguageCodeSystem(), CsvConstants.PREFERRED_LANGUAGE_CODE, interactionId));
                     coding.setCode(langCode);
-                    coding.setDisplay(data.getPreferredLanguageCodeDescription());
+                    coding.setDisplay(fetchDisplay(langCode, data.getPreferredLanguageCodeDescription(), CsvConstants.PREFERRED_LANGUAGE_CODE, interactionId));
                     CodeableConcept language = new CodeableConcept();
                     language.addCoding(coding);
                     PatientCommunicationComponent communication = new PatientCommunicationComponent();

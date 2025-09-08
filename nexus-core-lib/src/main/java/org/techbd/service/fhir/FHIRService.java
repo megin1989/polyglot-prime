@@ -25,8 +25,6 @@ import java.util.stream.StreamSupport;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.core.NestedExceptionUtils;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
@@ -47,12 +45,12 @@ import org.techbd.config.CoreAppConfig.MTlsAwsSecrets;
 import org.techbd.config.CoreAppConfig.MTlsResources;
 import org.techbd.config.CoreAppConfig.PostStdinPayloadToNyecDataLakeExternal;
 import org.techbd.config.CoreAppConfig.WithApiKeyAuth;
+import org.techbd.config.CoreUdiPrimeJpaConfig;
 import org.techbd.config.Helpers;
 import org.techbd.config.Interactions;
 import org.techbd.config.Nature;
 import org.techbd.config.SourceType;
 import org.techbd.config.State;
-import org.techbd.config.CoreUdiPrimeJpaConfig;
 import org.techbd.exceptions.ErrorCode;
 import org.techbd.exceptions.JsonValidationException;
 import org.techbd.service.dataledger.CoreDataLedgerApiClient;
@@ -61,6 +59,8 @@ import org.techbd.service.fhir.engine.OrchestrationEngine;
 import org.techbd.service.fhir.engine.OrchestrationEngine.Device;
 import org.techbd.udi.auto.jooq.ingress.routines.RegisterInteractionFhirRequest;
 import org.techbd.util.AWSUtil;
+import org.techbd.util.AppLogger;
+import org.techbd.util.TemplateLogger;
 import org.techbd.util.fhir.CoreFHIRUtil;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -91,7 +91,7 @@ import software.amazon.awssdk.services.secretsmanager.model.SecretsManagerExcept
 @Getter
 @Setter
 public class FHIRService {
-    private static final Logger LOG = LoggerFactory.getLogger(FHIRService.class.getName());
+    private final TemplateLogger LOG;
     private final CoreAppConfig coreAppConfig;
 	private final CoreDataLedgerApiClient coreDataLedgerApiClient;
     private final OrchestrationEngine engine;
@@ -99,12 +99,13 @@ public class FHIRService {
 	private Tracer tracer;
 
 	public FHIRService(CoreAppConfig coreAppConfig, CoreDataLedgerApiClient coreDataLedgerApiClient,OrchestrationEngine engine,
-	final CoreUdiPrimeJpaConfig coreUdiPrimeJpaConfig) {
+	final CoreUdiPrimeJpaConfig coreUdiPrimeJpaConfig, AppLogger appLogger) {
 		this.coreAppConfig = coreAppConfig;
 		this.coreDataLedgerApiClient = coreDataLedgerApiClient;
 		this.tracer = GlobalOpenTelemetry.get().getTracer("FHIRService");
 		this.engine = engine;
 		this.coreUdiPrimeJpaConfig = coreUdiPrimeJpaConfig;
+		LOG = appLogger.getLogger(FHIRService.class);
 	}
 
  /**
@@ -144,12 +145,8 @@ public class FHIRService {
 			final String tenantId = (String)requestParameters.get(Constants.TENANT_ID);
 			final String source = (String)requestParameters.get(Constants.SOURCE_TYPE);
 			String dataLakeApiContentType = (String)requestParameters.get(Constants.DATA_LAKE_API_CONTENT_TYPE);
-
-			final String origin = (String)requestParameters.get(Constants.ORIGIN);
-			final String deletesessioncookie = (String)requestParameters.get(Constants.DELETE_USER_SESSION_COOKIE); 
 			final String customDataLakeApi = (String)requestParameters.get(Constants.CUSTOM_DATA_LAKE_API);
 			final String healthCheck = (String)requestParameters.get(Constants.HEALTH_CHECK);
-			final String isSync = (String)requestParameters.get(Constants.IMMEDIATE);
 			final String provenance = (String)requestParameters.get(Constants.PROVENANCE);
 			final String mtlsStrategy = (String)requestParameters.get(Constants.MTLS_STRATEGY);
 			final String groupInteractionId = (String)requestParameters.get(Constants.GROUP_INTERACTION_ID);
@@ -186,7 +183,7 @@ public class FHIRService {
             LOG.info("Bundle processing start at {} for interaction id {}.", interactionId);
 			final var dslContext = coreUdiPrimeJpaConfig.dsl();
             final var jooqCfg = dslContext.configuration();
-			if (healthCheck == null || "false".equals(healthCheck)) {
+			if (!"true".equalsIgnoreCase(healthCheck != null ? healthCheck.trim() : null)) {
 				registerOriginalPayload(jooqCfg, requestParameters,
 						payload, interactionId, groupInteractionId, masterInteractionId,
 						source, requestUriToBeOverriden, coRrelationId);
@@ -199,10 +196,10 @@ public class FHIRService {
                     dataLakeApiContentType = MediaType.APPLICATION_JSON_VALUE;
                 }
 
-                final Map<String, Object> immediateResult = validate(requestParameters, payload, interactionId, provenance,
+                                final Map<String, Object> immediateResult = validate(requestParameters, payload, interactionId, provenance,
                         source);
-                final Map<String, Object> result = Map.of("OperationOutcome", immediateResult);
-				if (healthCheck == null || "false".equals(healthCheck)) {
+                                               final Map<String, Object> result = Map.of("OperationOutcome", immediateResult);
+				if (!"true".equalsIgnoreCase(healthCheck != null ? healthCheck.trim() : null)) {
 					payloadWithDisposition = registerValidationResults(jooqCfg, requestParameters,
 							result, interactionId, groupInteractionId, masterInteractionId,
 							source, requestUriToBeOverriden);
@@ -212,7 +209,7 @@ public class FHIRService {
                     return result;
                 }
 
-                if ("true".equals(healthCheck)) {
+                if ("true".equalsIgnoreCase(healthCheck != null ? healthCheck.trim() : null)) {
                     return result;
                 }
 
@@ -329,7 +326,7 @@ public class FHIRService {
 	}
 	
 
-	public static Map<String, Object> buildOperationOutcome(final JsonValidationException ex,
+	public Map<String, Object> buildOperationOutcome(final JsonValidationException ex,
 															final String interactionId) {
 		final var validationResult = Map.of(
 				"valid", false,
@@ -340,6 +337,7 @@ public class FHIRService {
 		final var immediateResult = Map.of(
 				"resourceType", "OperationOutcome", 
 				"bundleSessionId", interactionId,
+				Constants.TECHBD_VERSION, coreAppConfig.getVersion(),	
 				"validationResults", List.of(validationResult)
 		);
 
@@ -382,6 +380,14 @@ public class FHIRService {
 					Nature.ORIGINAL_FHIR_PAYLOAD.getDescription(),
 					payloadJson,State.NONE.name(),State.ACCEPT_FHIR_BUNDLE.name());
 			rihr.setPAdditionalDetails((JsonNode) Configuration.objectMapper.valueToTree( Map.of("request", requestParameters)));
+			if (requestParameters.get(Constants.ELABORATION) != null) {
+				try {
+					JsonNode elaborationNode = Configuration.objectMapper.readTree((String) requestParameters.get(Constants.ELABORATION));
+					rihr.setPElaboration(elaborationNode);
+				} catch (JsonProcessingException e) {
+					LOG.error("Invalid elaboration JSON. Storing as string. Error: {} for interactionID :{}", e.getMessage(), interactionId, e);
+				}
+			}
 			final int i = rihr.execute(jooqCfg);
 			final var end = Instant.now();
 			final JsonNode response = rihr.getReturnValue();
@@ -473,6 +479,7 @@ public class FHIRService {
 		rihr.setPProvenance(provenance);
 		rihr.setPFromState(fromState);
 		rihr.setPToState(toState);
+		rihr.setPTechbdVersionNumber(coreAppConfig.getVersion());
 		setUserDetails(rihr, requestParameters);
 	}
 
@@ -498,6 +505,8 @@ public class FHIRService {
 			final var start = Instant.now();
 			LOG.info("FHIRService  - Validate -BEGIN for interactionId: {} ", interactionId);
 			final var igPackages = coreAppConfig.getIgPackages();
+            var requestedIgVersion = (String) requestParameters.get(Constants.SHIN_NY_IG_VERSION);
+            LOG.info("headerIgVersion : "+ requestedIgVersion);
 			final var sessionBuilder = engine.session()
 					.withSessionId(UUID.randomUUID().toString())
 					.onDevice(Device.createDefault())
@@ -506,6 +515,7 @@ public class FHIRService {
 					.withFhirProfileUrl(CoreFHIRUtil.getBundleProfileUrl())
 					.withTracer(tracer)
 					.withFhirIGPackages(igPackages)
+                    .withRequestedIgVersion(requestedIgVersion)
 					.addHapiValidationEngine(); // by default
 					// clearExisting is set to true so engines can be fully supplied through header
 					
@@ -524,6 +534,7 @@ public class FHIRService {
 								+ coreAppConfig.getOperationOutcomeHelpUrl(),
 						"bundleSessionId", interactionId, // for tracking in
 															// database, etc.
+							Constants.TECHBD_VERSION, coreAppConfig.getVersion(),								
 						"isAsync", true,
 						"validationResults", session.getValidationResults(),
 						"statusUrl","/Bundle/$status/"
@@ -1204,7 +1215,7 @@ public class FHIRService {
 		return keyDetails;
 	}
 
-	public static String getValue(final SecretsManagerClient secretsClient, final String secretName) {
+	public String getValue(final SecretsManagerClient secretsClient, final String secretName) {
 		LOG.debug("FHIRService:: getValue  - Get Value of secret with name  : {} -BEGIN", secretName);
 		String secret = null;
 		try {
@@ -1631,6 +1642,7 @@ public class FHIRService {
 				// time
 				initRIHR.setPCreatedBy(FHIRService.class.getName());
 				initRIHR.setPProvenance(provenance);
+				initRIHR.setPTechbdVersionNumber(coreAppConfig.getVersion());
 				final var start = Instant.now();
 				final var execResult = initRIHR.execute(jooqCfg);
 				final var end = Instant.now();
@@ -1692,6 +1704,7 @@ public class FHIRService {
 				forwardRIHR.setPCreatedAt(OffsetDateTime.now()); // don't let DB
 				forwardRIHR.setPCreatedBy(FHIRService.class.getName());
 				forwardRIHR.setPProvenance(provenance);
+				forwardRIHR.setPTechbdVersionNumber(coreAppConfig.getVersion());
 				final var start = Instant.now();
 				final var execResult = forwardRIHR.execute(jooqCfg);
 				final var end = Instant.now();
@@ -1753,6 +1766,7 @@ public class FHIRService {
 				// app time
 				forwardRIHR.setPCreatedBy(FHIRService.class.getName());
 				forwardRIHR.setPProvenance(provenance);
+				forwardRIHR.setPTechbdVersionNumber(coreAppConfig.getVersion());
 				final var start = Instant.now();
 				final var execResult = forwardRIHR.execute(jooqCfg);
 				final var end = Instant.now();
@@ -1863,6 +1877,7 @@ public class FHIRService {
 				errorRIHR.setPCreatedAt(OffsetDateTime.now()); // don't let DB set this, use app time
 				errorRIHR.setPCreatedBy(FHIRService.class.getName());
 				errorRIHR.setPProvenance(provenance);
+				errorRIHR.setPTechbdVersionNumber(coreAppConfig.getVersion());
 				final var start = Instant.now();
 				final var execResult = errorRIHR.execute(jooqCfg);
 				final var end = Instant.now();

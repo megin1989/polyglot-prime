@@ -17,7 +17,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StreamUtils;
@@ -29,9 +28,9 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.techbd.conf.Configuration;
+import org.techbd.config.Constants;
 import org.techbd.config.CoreAppConfig;
 import org.techbd.config.CoreUdiPrimeJpaConfig;
-import org.techbd.config.Constants;
 import org.techbd.service.dataledger.CoreDataLedgerApiClient;
 import org.techbd.service.fhir.FHIRService;
 import org.techbd.service.fhir.engine.OrchestrationEngine;
@@ -151,12 +150,12 @@ public class FhirController {
                                         + "}")))
         })
         @ResponseBody
-        @Async
         public Object validateBundleAndForward(
                         @Parameter(description = "Payload for the API. This <b>must not</b> be <code>null</code>.", required = true) final @RequestBody @Nonnull String payload,
                         @Parameter(description = "Parameter to specify the Tenant ID. This is a <b>mandatory</b> parameter.", required = true) @RequestHeader(value = Configuration.Servlet.HeaderName.Request.TENANT_ID, required = true) String tenantId,
                         // "profile" is the same name that HL7 validator uses
                         @Parameter(description = "Optional header to specify the Datalake API URL. If not specified, the default URL mentioned in the application configuration will be used.", required = false) @RequestHeader(value = Constants.DATALAKE_API_URL, required = false) String customDataLakeApi,
+                        @Parameter(description = "Optional header to provide elaboration details.", required = false) @RequestHeader(value = "X-TechBD-Elaboration", required = false) String elaboration,
                         @Parameter(description = "Optional header to specify the request URI to override. This parameter is used for requests forwarded from Mirth Connect, where we override it with the initial request URI from Mirth Connect.", required = false) @RequestHeader(value = "X-TechBD-Override-Request-URI", required = false) String requestUriToBeOverridden,
                         @Parameter(description = "An optional header to provide a UUID that if provided will be used as interaction id.", required = false) @RequestHeader(value = "X-Correlation-ID", required = false) String coRrelationId,
                         @Parameter(description = """
@@ -165,7 +164,7 @@ public class FhirController {
                                         If the header is not provided, <code>application/json</code> will be used.
                                         """, required = false) @RequestHeader(value = Constants.DATALAKE_API_CONTENT_TYPE, required = false) String dataLakeApiContentType,
                         @Parameter(description = "Header to decide whether the request is just for health check. If <code>true</code>, no information will be recorded in the database. It will be <code>false</code> in by default.", required = false) @RequestHeader(value = Constants.HEALTH_CHECK_HEADER, required = false) String healthCheck,
-                        @Parameter(hidden = true, description = "Optional parameter to decide whether the Datalake submission to be synchronous or asynchronous.", required = false) @RequestParam(value = "immediate", required = false) boolean isSync,
+                        @Parameter(hidden = true, description = "Optional parameter to decide whether response should be synchronous or asynchronous.", required = false) @RequestParam(value = "immediate", required = false,defaultValue = "true") boolean isSync,
 
                         @Parameter(hidden = true, description = """
                                         An optional parameter specifies whether the scoring engine API should be called with or without mTLS.<br>
@@ -180,6 +179,7 @@ public class FhirController {
                         @Parameter(hidden = true, description = "Optional parameter to decide whether the session cookie (JSESSIONID) should be deleted.", required = false) @RequestParam(value = "delete-session-cookie", required = false) Boolean deleteSessionCookie,
                         @Parameter(hidden = true, description = "Optional parameter to specify source of the request.", required = false) @RequestParam(value = "source", required = false, defaultValue = "FHIR") String source,
                         @Parameter(description = "Optional header to set validation severity level (`information`, `warning`, `error`, `fatal`).", required = false) @RequestHeader(value = "X-TechBD-Validation-Severity-Level", required = false) String validationSeverityLevel,
+                        @Parameter(description = "Optional header to specify IG version.", required = false) @RequestHeader(value = "X-SHIN-NY-IG-Version", required = false) String requestedIgVersion ,                    
                         HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
                 Span span = tracer.spanBuilder("FhirController.validateBundleAndForward").startSpan();
                 try {
@@ -205,12 +205,13 @@ public class FhirController {
                         Map<String, Object> headers = CoreFHIRUtil.buildHeaderParametersMap(tenantId, customDataLakeApi,
                                         dataLakeApiContentType,
                                         requestUriToBeOverridden, validationSeverityLevel, healthCheck, coRrelationId,
-                                        provenance);
+                                        provenance,requestedIgVersion);
                         Map <String,Object> requestDetailsMap = FHIRUtil.extractRequestDetails(request);
                         CoreFHIRUtil.buildRequestParametersMap(requestDetailsMap,deleteSessionCookie,
                                         mtlsStrategy, source, null, null,request.getRequestURI());
                         requestDetailsMap.put(Constants.INTERACTION_ID,UUID.randomUUID().toString()); 
                         requestDetailsMap.put(Constants.OBSERVABILITY_METRIC_INTERACTION_START_TIME, Instant.now().toString()); 
+                        requestDetailsMap.put(Constants.ELABORATION, elaboration);
                         requestDetailsMap.putAll(headers);  
                         request = new CustomRequestWrapper(request, payload);
                         Map<String, Object> responseParameters = new HashMap<>();
@@ -269,6 +270,7 @@ public class FhirController {
                         @Parameter(description = "Parameter to specify the Tenant ID. This is a <b>mandatory</b> parameter.", required = true) @RequestHeader(value = Configuration.Servlet.HeaderName.Request.TENANT_ID, required = true) String tenantId,
                         // "profile" is the same name that HL7 validator uses
                         @Parameter(hidden = true, description = "Optional parameter to decide whether the session cookie (JSESSIONID) should be deleted.", required = false) @RequestParam(value = "delete-session-cookie", required = false) Boolean deleteSessionCookie,
+                        @Parameter(description = "Optional header to specify IG version.", required = false) @RequestHeader(value = "X-SHIN-NY-IG-Version", required = false) String requestedIgVersion,
                         HttpServletRequest request, HttpServletResponse response) throws IOException {
                 Span span = tracer.spanBuilder("FhirController.validateBundle").startSpan();
                 try {
@@ -283,7 +285,7 @@ public class FhirController {
                         }
                         request = new CustomRequestWrapper(request, payload);
                         Map<String, Object> headers = CoreFHIRUtil.buildHeaderParametersMap(tenantId, null, null,
-                                        null, null, null, null, null);
+                                        null, null, null, null, null,requestedIgVersion );
                         Map <String,Object> requestDetailsMap = FHIRUtil.extractRequestDetails(request);            
                         CoreFHIRUtil.buildRequestParametersMap(requestDetailsMap,deleteSessionCookie,
                                         null, null,

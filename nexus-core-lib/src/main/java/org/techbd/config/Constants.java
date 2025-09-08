@@ -26,6 +26,7 @@ public interface Constants {
     public static final String OVERRIDE_REQUEST_URI = "X-TechBD-Override-Request-URI";
     public static final String DELETE_SESSION = "delete-session-cookie";
     public static final String OBSERVABILITY_METRIC_INTERACTION_START_TIME = "X-Observability-Metric-Interaction-Start-Time";
+    public static final String ELABORATION = "X-TechBD-Elaboration";
     public static final String OBSERVABILITY_METRIC_INTERACTION_FINISH_TIME = "X-Observability-Metric-Interaction-Finish-Time";
     public static final String OBSERVABILITY_METRIC_INTERACTION_DURATION_NANOSECS = "X-Observability-Metric-Interaction-Duration-Nanosecs";
     public static final String OBSERVABILITY_METRIC_INTERACTION_DURATION_MILLISECS = "X-Observability-Metric-Interaction-Duration-Millisecs";
@@ -46,13 +47,14 @@ public interface Constants {
     public static final String REMOTE_ADDRESS = "remoteAddress";
     public static final String IMMEDIATE = "immediate";
     public static final String VALIDATION_SEVERITY_LEVEL = "X-TechBD-Validation-Severity-Level";
+    public static final String SHIN_NY_IG_VERSION = "X-SHIN-NY-IG-Version";
     public static final String FHIR_STRUCT_DEFN_PROFILE_URI = "X-TechBD-FHIR-Profile-URI";
     public static final String FHIR_VALIDATION_STRATEGY = "X-TechBD-FHIR-Validation-Strategy";
     public static final String DATALAKE_API_URL = "X-TechBD-DataLake-API-URL";
     public static final String DATALAKE_API_CONTENT_TYPE = "DataLake-API-Content-Type";
     public static final String HEALTH_CHECK_HEADER = "X-TechBD-HealthCheck";
     public static final String START_TIME_ATTRIBUTE = "startTime";
-    public static final String BASE_FHIR_URL = "BASE_FHIR_URL";
+    public static final String BASE_FHIR_URL = "X-TechBD-Base-FHIR-URL";
     public static final String METRIC_COOKIE = "METRIC_COOKIE";
     public static final String HEADER = "X-Observability-Metric-Interaction-Duration-Millisecs";
     public static final String DEFAULT_USER_NAME = "API_USER";
@@ -95,4 +97,5 @@ public interface Constants {
     public static final String PARAMETERS = "parameters";
     public static final String SESSION = "session";
     public static final String COOKIES = "cookies";
+    public static final String TECHBD_VERSION = "techBdVersion";
 }

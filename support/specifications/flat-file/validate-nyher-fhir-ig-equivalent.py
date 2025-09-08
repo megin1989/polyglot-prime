@@ -58,6 +58,13 @@ class ValidateAnswerCode(Check):
                 yield errors.RowError.from_row(row, note=note)
                
 
+def clean_results(results):
+    """Remove empty errorsSummary from results to avoid displaying null/empty arrays"""
+    cleaned_results = results.copy()
+    if "errorsSummary" in cleaned_results and not cleaned_results["errorsSummary"]:
+        del cleaned_results["errorsSummary"]
+    return cleaned_results
+
 def validate_package(spec_path, file1, file2, file3, file4, output_path):
     
     results = {
@@ -90,7 +97,8 @@ def validate_package(spec_path, file1, file2, file3, file4, output_path):
                 })
 
             # Write errors to output.json and skip further processing
-            print(json.dumps(results, indent=4))
+            cleaned_results = clean_results(results)
+            print(json.dumps(cleaned_results, indent=4))
             return  # Skip Frictionless validation
         
                 # Only extract data if there are no errors in the summary
@@ -126,110 +134,80 @@ def validate_package(spec_path, file1, file2, file3, file4, output_path):
 
         # Transform and validate
         common_transform_steps = [ 
-            ("ORGANIZATION_TYPE_CODE", "organization_type_code"),
-            ("ORGANIZATION_TYPE_DISPLAY", "organization_type_display"), 
+            ("ORGANIZATION_TYPE_CODE", "organization_type_code"), 
             ("ORGANIZATION_TYPE_CODE_SYSTEM", "organization_type_code_system"), 
             ("FACILITY_STATE", "facility_state"),
-            ("ENCOUNTER_CLASS_CODE", "encounter_class_code"), 
-            ("ENCOUNTER_CLASS_CODE_DESCRIPTION", "encounter_class_code_description"), 
+            ("ENCOUNTER_CLASS_CODE", "encounter_class_code"),             
             ("ENCOUNTER_CLASS_CODE_SYSTEM", "encounter_class_code_system"),
-            ("ENCOUNTER_STATUS_CODE", "encounter_status_code"),
-            ("ENCOUNTER_STATUS_CODE_DESCRIPTION", "encounter_status_code_description"),
-            ("ENCOUNTER_STATUS_CODE_SYSTEM", "encounter_status_code_system"),
-            ("ENCOUNTER_TYPE_CODE_DESCRIPTION", "encounter_type_code_description"),
+            ("ENCOUNTER_STATUS_CODE", "encounter_status_code"),            
+            ("ENCOUNTER_STATUS_CODE_SYSTEM", "encounter_status_code_system"),            
             ("ENCOUNTER_TYPE_CODE_SYSTEM", "encounter_type_code_system"),
-            ("PROCEDURE_STATUS_CODE", "procedure_status_code"), 
-            ("PROCEDURE_CODE_SYSTEM", "procedure_code_system"),
             ("CONSENT_STATUS", "consent_status"),
-            ("SCREENING_STATUS_CODE", "screening_status_code"),
-            ("SCREENING_STATUS_CODE_DESCRIPTION", "screening_status_code_description"),
+            ("SCREENING_STATUS_CODE", "screening_status_code"),            
             ("SCREENING_STATUS_CODE_SYSTEM", "screening_status_code_system"),
-            ("SCREENING_LANGUAGE_CODE", "screening_language_code"),
-            ("SCREENING_LANGUAGE_DESCRIPTION", "screening_language_description"),
+            ("SCREENING_LANGUAGE_CODE", "screening_language_code"),            
             ("SCREENING_LANGUAGE_CODE_SYSTEM", "screening_language_code_system"),
             ("SCREENING_ENTITY_ID_CODE_SYSTEM", "screening_entity_id_code_system"),
-            ("SCREENING_CODE", "screening_code"),
-            ("SCREENING_CODE_DESCRIPTION", "screening_code_description"),
-            ("SCREENING_CODE_SYSTEM", "screening_code_system"),
-            ("QUESTION_CODE_DESCRIPTION", "question_code_description"), 
+            ("SCREENING_CODE", "screening_code"),            
+            ("SCREENING_CODE_SYSTEM", "screening_code_system"),            
             ("QUESTION_CODE_SYSTEM", "question_code_system"),
-            ("ANSWER_CODE", "answer_code"),
-            ("ANSWER_CODE_DESCRIPTION", "answer_code_description"),    
+            ("ANSWER_CODE", "answer_code"),            
             ("ANSWER_CODE_SYSTEM", "answer_code_system"), 
-            ("OBSERVATION_CATEGORY_SDOH_CODE", "observation_category_sdoh_code"),  
-            ("OBSERVATION_CATEGORY_SDOH_TEXT", "observation_category_sdoh_text"),
-            ("DATA_ABSENT_REASON_CODE", "data_absent_reason_code"),
-            ("DATA_ABSENT_REASON_DISPLAY", "data_absent_reason_display"),
+            ("OBSERVATION_CATEGORY_SDOH_CODE", "observation_category_sdoh_code"),              
+            ("DATA_ABSENT_REASON_CODE", "data_absent_reason_code"),            
             ("POTENTIAL_NEED_INDICATED", "potential_need_indicated"),
-            ("ADMINISTRATIVE_SEX_CODE", "administrative_sex_code"), 
-            ("ADMINISTRATIVE_SEX_CODE_DESCRIPTION", "administrative_sex_code_description"),
+            ("ADMINISTRATIVE_SEX_CODE", "administrative_sex_code"),             
             ("ADMINISTRATIVE_SEX_CODE_SYSTEM", "administrative_sex_code_system"),
-            ("SEX_AT_BIRTH_CODE", "sex_at_birth_code"),
-            ("SEX_AT_BIRTH_CODE_DESCRIPTION", "sex_at_birth_code_description"),
+            ("SEX_AT_BIRTH_CODE", "sex_at_birth_code"),            
             ("SEX_AT_BIRTH_CODE_SYSTEM", "sex_at_birth_code_system"),
-            ("STATE", "state"),
-            ("TELECOM_USE", "telecom_use"),
-            ("RACE_CODE_DESCRIPTION", "race_code_description"),
-            ("RACE_CODE_SYSTEM", "race_code_system"),
-            ("ETHNICITY_CODE_DESCRIPTION", "ethnicity_code_description"),
+            ("STATE", "state"),        
+            ("RACE_CODE_SYSTEM", "race_code_system"),            
             ("ETHNICITY_CODE_SYSTEM", "ethnicity_code_system"),
-            ("PERSONAL_PRONOUNS_CODE", "personal_pronouns_code"),
-            ("PERSONAL_PRONOUNS_DESCRIPTION", "personal_pronouns_description"),
+            ("PERSONAL_PRONOUNS_CODE", "personal_pronouns_code"),            
             ("PERSONAL_PRONOUNS_SYSTEM", "personal_pronouns_system"),
-            ("GENDER_IDENTITY_CODE", "gender_identity_code"),
-            ("GENDER_IDENTITY_CODE_DESCRIPTION", "gender_identity_code_description"),
+            ("GENDER_IDENTITY_CODE", "gender_identity_code"),            
             ("GENDER_IDENTITY_CODE_SYSTEM", "gender_identity_code_system"),
-            ("PREFERRED_LANGUAGE_CODE", "preferred_language_code"),
-            ("PREFERRED_LANGUAGE_CODE_DESCRIPTION", "preferred_language_code_description"),
+            ("PREFERRED_LANGUAGE_CODE", "preferred_language_code"),            
             ("PREFERRED_LANGUAGE_CODE_SYSTEM", "preferred_language_code_system"), 
-            ("SEXUAL_ORIENTATION_CODE", "sexual_orientation_code"),
-            ("SEXUAL_ORIENTATION_CODE_DESCRIPTION", "sexual_orientation_code_description"),
+            ("SEXUAL_ORIENTATION_CODE", "sexual_orientation_code"),            
             ("SEXUAL_ORIENTATION_CODE_SYSTEM", "sexual_orientation_code_system")            
         ]
 
+        # Track errors to avoid duplicates
+        seen_errors = set()
+
         for resource in package.resources:
-            # Create transform steps only for fields that exist in the current resource
-            transform_steps = [
-                steps.cell_convert(field_name=field_name, function=lambda value: value.lower())
-                for field_name, _ in common_transform_steps
-                if any(field.name == field_name for field in resource.schema.fields)
-            ]
-            resource = transform(resource, steps=transform_steps)
+            try:
+                # Create transform steps only for fields that exist in the current resource
+                transform_steps = [
+                    steps.cell_convert(field_name=field_name, function=lambda value: value.lower())
+                    for field_name, _ in common_transform_steps
+                    if any(field.name == field_name for field in resource.schema.fields)
+                ]
+                resource = transform(resource, steps=transform_steps)
+            except Exception as e:
+                file_in_error_path = getattr(resource, "path", None)  # or resource.name, depending on your library
+                file_in_error = os.path.basename(file_in_error_path) if file_in_error_path else None
+                error_message = str(e)
+                # Extract missing field name as before
+                match = re.search(r"'(.*?)'", error_message)
+                missing_field = match.group(1) if match else "Unknown field"
 
-        # Define helper functions outside the loop to avoid closure issues
-        # def strip_whitespace(value):
-        #     return value.strip() if isinstance(value, str) else value 
-        
-        # def strip_and_lowercase(value):
-        #     if isinstance(value, str):
-        #         return value.strip().lower()
-        #     return value
+                # Create a unique key for this error to avoid duplicates
+                error_key = (missing_field)
 
-        # for resource in package.resources:
-        #     # Create a list to hold all transform steps
-        #     transform_steps = []
-            
-        #     # Get field names that need special processing (lowercase)
-        #     special_fields = {field_name for field_name, _ in common_transform_steps 
-        #                     if any(field.name == field_name for field in resource.schema.fields)}
-            
-        #     # Process all string fields
-        #     for field in resource.schema.fields:
-        #         if field.type == "string":
-        #             if field.name in special_fields:
-        #                 # Apply both strip and lowercase for special fields
-        #                 transform_steps.append(
-        #                     steps.cell_convert(field_name=field.name, function=strip_and_lowercase)
-        #                 )
-        #             else:
-        #                 # Apply only strip for regular string fields
-        #                 transform_steps.append(
-        #                     steps.cell_convert(field_name=field.name, function=strip_whitespace)
-        #                 )
-            
-        #     # Apply all transforms to the resource
-        #     if transform_steps:
-        #         resource = transform(resource, steps=transform_steps)
+                if error_key not in seen_errors:
+                    seen_errors.add(error_key)
+                    file_info = f" in file '{file_in_error}'" if file_in_error else ""
+                    user_friendly_message = (
+                        f"The field '{missing_field}' is missing or incorrectly named in the dataset. "
+                        f"Please check if it exists in the CSV file and matches the expected schema."
+                    )
+                    results["errorsSummary"].append({
+                        "fieldName": missing_field,
+                        "message": user_friendly_message,
+                        "type": "data-processing-errors"
+                    })
 
         checklist = Checklist(checks=[ValidateAnswerCode()])
         # Validate the package
@@ -246,35 +224,15 @@ def validate_package(spec_path, file1, file2, file3, file4, output_path):
             "message": str(e),
             "type": "file-missing-error"
         })
-
-    except Exception as e:
-        error_message = str(e)
-
-        # Check if the error is related to missing fields in transformation
-        if "selection is not a field or valid field index" in error_message:
-            # Extract the missing field name from the error message
-            match = re.search(r"'(.*?)'", error_message)
-            missing_field = match.group(1) if match else "Unknown field"
-
-            user_friendly_message = (
-                f"The field '{missing_field}' is missing or incorrectly named in the dataset. "
-                f"Please check if it exists in the CSV file and matches the expected schema."
-            )
-        else:
-            user_friendly_message = error_message  # Keep other errors as-is
-
-        results["errorsSummary"].append({
-            "fieldName": None,
-            "message": user_friendly_message,
-            "type": "data-processing-errors"
-        })
+ 
 
 
     # Write the results to a JSON file if output_path is provided, otherwise print to console
     if output_path:
         with open(output_path, 'w') as json_file:
             try:
-                json.dump(results, json_file, indent=4, default=str)
+                cleaned_results = clean_results(results)
+                json.dump(cleaned_results, json_file, indent=4, default=str)
                 print(f"Validation results written to '{output_path}'.")
                 return True
             except Exception as e:
@@ -282,20 +240,21 @@ def validate_package(spec_path, file1, file2, file3, file4, output_path):
                 "fieldName": None,
                 "message": f"Error converting results to JSON: {str(e)}",
                 "type": "data-processing-errors"
-                }) 
+                })
                 print(results)
                 return False
 
-    else: 
+    else:
         try:
-            print(json.dumps(results, indent=4, default=str))
+            cleaned_results = clean_results(results)
+            print(json.dumps(cleaned_results, indent=4, default=str))
             return True
         except Exception as e:
             results["errorsSummary"].append({
             "fieldName": None,
             "message": f"Error converting results to JSON: {str(e)}",
             "type": "data-processing-errors"
-            }) 
+            })
             print(results)
             return False
 
@@ -314,7 +273,8 @@ if __name__ == "__main__":
         "message": error_message,
         "type": "argument-error"
         })
-        print(json.dumps(results, indent=4))
+        cleaned_results = clean_results(results)
+        print(json.dumps(cleaned_results, indent=4))
         sys.exit(1)
 
     # Parse arguments
@@ -339,8 +299,9 @@ if __name__ == "__main__":
             "message": error_message,
             "type": "file-missing-error"
         }) 
-        print(json.dumps(results, indent=4))
-        sys.exit(1)        
+        cleaned_results = clean_results(results)
+        print(json.dumps(cleaned_results, indent=4))
+        sys.exit(1)
 
     # Run validation
     validate_package(spec_path, file1, file2, file3, file4, output_path)

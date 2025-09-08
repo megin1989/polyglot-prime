@@ -14,8 +14,6 @@ import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Meta;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.ResourceType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.techbd.config.CoreUdiPrimeJpaConfig;
@@ -24,7 +22,9 @@ import org.techbd.model.csv.QeAdminData;
 import org.techbd.model.csv.ScreeningObservationData;
 import org.techbd.model.csv.ScreeningProfileData;
 import org.techbd.service.csv.CodeLookupService;
+import org.techbd.util.AppLogger;
 import org.techbd.util.DateUtil;
+import org.techbd.util.TemplateLogger;
 import org.techbd.util.csv.CsvConstants;
 import org.techbd.util.csv.CsvConversionUtil;
 
@@ -34,11 +34,12 @@ import org.techbd.util.csv.CsvConversionUtil;
 @Component
 @Order(5)
 public class EncounterConverter extends BaseConverter {
-
-    public EncounterConverter(CodeLookupService codeLookupService,final CoreUdiPrimeJpaConfig coreUdiPrimeJpaConfig) {
+    private final TemplateLogger LOG;
+    public EncounterConverter(CodeLookupService codeLookupService,final CoreUdiPrimeJpaConfig coreUdiPrimeJpaConfig, AppLogger appLogger) {
         super(codeLookupService,coreUdiPrimeJpaConfig);
+        this.LOG = appLogger.getLogger(EncounterConverter.class);
     }
-    private static final Logger LOG = LoggerFactory.getLogger(EncounterConverter.class.getName());
+
 
     /**
      * Returns the resource type associated with this converter.
@@ -103,7 +104,8 @@ public class EncounterConverter extends BaseConverter {
 
         populatePatientReference(encounter, idsGenerated);
 
-        populateLocationReference(encounter, screeningProfileData, idsGenerated);
+        //populateLocationReference(encounter, screeningProfileData, idsGenerated);
+        
         // Narrative text = new Narrative();
         // text.setStatus(NarrativeStatus.GENERATED);
         // encounter.setText(text);
@@ -124,10 +126,10 @@ public class EncounterConverter extends BaseConverter {
         if (StringUtils.isNotEmpty(data.getEncounterClassCode())) {
             Coding encounterClass = new Coding();
             String encounterClassCode = fetchCode(data.getEncounterClassCode(), CsvConstants.ENCOUNTER_CLASS_CODE, interactionId);
+            String encounterClassDescription = fetchDisplay(encounterClassCode, data.getEncounterClassCodeDescription(), CsvConstants.ENCOUNTER_CLASS_CODE, interactionId);
             encounterClass.setSystem(fetchSystem(encounterClassCode, data.getEncounterClassCodeSystem(), CsvConstants.ENCOUNTER_CLASS_CODE, interactionId));
             encounterClass.setCode(encounterClassCode);
-
-            encounterClass.setDisplay(data.getEncounterClassCodeDescription());
+            encounterClass.setDisplay(encounterClassDescription);
             encounter.setClass_(encounterClass);
         }
     }
@@ -137,17 +139,14 @@ public class EncounterConverter extends BaseConverter {
             CodeableConcept encounterType = new CodeableConcept();
 
             if (data.getEncounterTypeCode() != null) {
+                String encounterDisplay = fetchDisplay(data.getEncounterTypeCode(), data.getEncounterTypeCodeDescription(), CsvConstants.ENCOUNTER_TYPE_CODE, interactionId);
                 Coding coding = new Coding();
                 coding.setCode(data.getEncounterTypeCode());
                 coding.setSystem(fetchSystem(data.getEncounterTypeCode(), data.getEncounterTypeCodeSystem(), CsvConstants.ENCOUNTER_TYPE_CODE, interactionId));
-                coding.setDisplay(data.getEncounterTypeCodeDescription());
+                coding.setDisplay(encounterDisplay);
                 encounterType.addCoding(coding);
+                encounterType.setText(encounterDisplay);
             }
-
-            if (data.getEncounterTypeCodeDescription() != null) {
-                encounterType.setText(data.getEncounterTypeCodeDescription());
-            }
-
             encounter.getType().add(encounterType);
         }
     }
