@@ -282,8 +282,8 @@ def validate_package(spec_path, file1, file2, file3, file4, output_path):
                 try:
                     rows = []
                     with open(file_path, 'r', encoding='utf-8', errors='replace') as csvfile:
-                        # reader = csv.reader(csvfile)
-                        for i, row in enumerate(csvfile):
+                        reader = csv.reader(csvfile)
+                        for i, row in enumerate(reader):
                             if i < ROW_LIMIT:  # Limit to first ROW_LIMIT rows
                                 rows.append(row)
                             else:
@@ -486,8 +486,8 @@ def validate_package(spec_path, file1, file2, file3, file4, output_path):
          
 
         # Add the validation report to results
-        #results["report"] = report.to_dict()
-        results["report"] = report
+        results["report"] = report.to_dict()
+        # results["report"] = report
         
 
     except FileNotFoundError as e:
