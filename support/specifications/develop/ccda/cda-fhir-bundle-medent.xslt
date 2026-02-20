@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Version : 0.1.7 -->
+<!-- Version : 0.1.9 -->
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"
                 xmlns:ccda="urn:hl7-org:v3"
                 xmlns:fhir="http://hl7.org/fhir"
@@ -47,6 +47,7 @@
   <xsl:param name="grouperScreeningCode"/>
   <xsl:param name="locationResourceId"/>
   <xsl:param name="componentAnswersXml"/>
+  <xsl:param name="X-TechBD-Part2"/>
 
   <!-- Parameters to get FHIR resource profile URLs -->
   <xsl:param name="baseFhirUrl"/>
@@ -156,6 +157,15 @@
       "profile": [
         "<xsl:value-of select='$bundleMetaProfileUrlFull'/>"
       ]
+      <xsl:if test="$X-TechBD-Part2 = 'true'">
+          ,"security": [
+              {
+                  "code": "ETH",
+                  "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                  "display": "Substance abuse information sensitivity"
+              }
+          ]
+      </xsl:if>
     },
     "type": "transaction"
     <xsl:if test="$bundleTimestamp"> 

@@ -95,7 +95,8 @@
   <xsl:param name="procedureResourceSha256Id"/>
   <xsl:param name="grouperObservationResourceSha256Id"/>
   <xsl:param name="categoryXml"/>
-  <xsl:param name="componentAnswersXml"/>  
+  <xsl:param name="componentAnswersXml"/>
+  <xsl:param name="X-TechBD-Part2"/>
 
   <!-- Parameters to get FHIR resource profile URLs -->
   <xsl:param name="baseFhirUrl"/>
@@ -132,6 +133,15 @@
     "profile": [
       "<xsl:value-of select='$bundleMetaProfileUrlFull'/>"
     ]
+    <xsl:if test="$X-TechBD-Part2 = 'true'">
+        ,"security": [
+            {
+                "code": "ETH",
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                "display": "Substance abuse information sensitivity"
+            }
+        ]
+    </xsl:if>
   },
   "type": "transaction",
   <xsl:if test="$bundleTimestamp">

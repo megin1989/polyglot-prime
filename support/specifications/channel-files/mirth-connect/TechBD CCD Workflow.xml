@@ -2,8 +2,8 @@
   <id>0cefb37a-ca0a-48cc-85a1-aa0b727d26a2</id>
   <nextMetaDataId>12</nextMetaDataId>
   <name>TechBD CCD Workflow</name>
-  <description>Version: 0.4.41</description>
-  <revision>36</revision>
+  <description>Version: 0.4.42</description>
+  <revision>41</revision>
   <sourceConnector version="4.5.0">
     <metaDataId>0</metaDataId>
     <name>sourceConnector</name>
@@ -476,21 +476,25 @@ function extractClinicalDocumentFromRawXML(rawXml) {
 
 function extractBoundaries(rawCcdaXml) {
 	try {
+		logger.info(&quot;rawCcdaXml 1: &quot; + rawCcdaXml);
 		// Remove boundary
 		var rawXml = String(rawCcdaXml)
 				    .replace(/^\uFEFF/, &apos;&apos;)      // real BOM
 				    .replace(/^ï»¿/, &apos;&apos;)        // mis-decoded BOM
 				    .trim();		
-		if (rawXml.indexOf(&quot;Content-Disposition:&quot;) !== -1) {
+		logger.info(&quot;rawXml 2: &quot; + rawXml);
+		if (rawXml.indexOf(&quot;Content-Type:&quot;) !== -1) {			
 	        // Extract everything after first blank line
 	        var match = rawXml.match(/\r?\n\r?\n([\s\S]*)/);
 	        if (match &amp;&amp; match[1]) {
 			    rawXml = match[1];
+			    logger.info(&quot;rawXml 3: &quot; + rawXml);
 		   }
 		   
 	        // Remove trailing boundary (last line starting with --)
 	        rawXml = rawXml.replace(/\r?\n--.*--\r?\n?$/, &apos;&apos;);
 	        rawXml = rawXml.replace(/\r?\n--.*$/, &apos;&apos;);
+	        logger.info(&quot;rawXml 4: &quot; + rawXml);
 	    }
 	    rawXml = String(rawXml)
 				    .replace(/^\uFEFF/, &apos;&apos;)      // real BOM
@@ -759,6 +763,13 @@ if (requestedPath == &quot;/ccda/Bundle/&quot; || requestedPath == &quot;/ccda/B
 	logger.info(&quot;X-TechBD-Screening-Code: &quot; + screeningCode);
 	if (screeningCode &amp;&amp; String(screeningCode).trim() !== &quot;&quot;) {
 	    channelMap.put(&apos;X-TechBD-Screening-Code&apos;, screeningCode);
+	}
+
+	//Part 2 Data Flagging 
+	var part2DataFlag = $(&apos;headers&apos;).getHeader(&apos;X-TechBD-Part2&apos;);	
+	logger.info(&quot;X-TechBD-Part2: &quot; + part2DataFlag);
+	if (part2DataFlag &amp;&amp; String(part2DataFlag).trim() !== &quot;&quot;) {
+	    channelMap.put(&apos;X-TechBD-Part2&apos;, part2DataFlag);
 	}
 }
 
@@ -1462,6 +1473,14 @@ function setResourceIdParameters(transformer) {
 	}
      transformer.setParameter(&apos;grouperScreeningCode&apos;, String(grouperScreeningCode));
      logger.info(&apos;grouperScreeningCode&apos; + &quot; : &quot; + grouperScreeningCode);
+
+     // Set part2 flag
+     var part2DataFlag = channelMap.get(&apos;X-TechBD-Part2&apos;);
+	var flagValue = &quot;false&quot;;
+	if (part2DataFlag &amp;&amp; String(part2DataFlag).toLowerCase() === &quot;true&quot;) {
+	    flagValue = &quot;true&quot;;
+	}	
+	transformer.setParameter(&apos;X-TechBD-Part2&apos;, flagValue);
 
 	// Extract `location`
      try {
@@ -2531,7 +2550,7 @@ return;</undeployScript>
     <metadata>
       <enabled>true</enabled>
       <lastModified>
-        <time>1771414229146</time>
+        <time>1771571148530</time>
         <timezone>Asia/Calcutta</timezone>
       </lastModified>
       <pruningSettings>

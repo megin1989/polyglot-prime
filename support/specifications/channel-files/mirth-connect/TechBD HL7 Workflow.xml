@@ -2,8 +2,8 @@
   <id>6b056724-d5c4-48ac-84e4-92b9c3768212</id>
   <nextMetaDataId>3</nextMetaDataId>
   <name>TechBD HL7 Workflow</name>
-  <description>Version: 0.1.11</description>
-  <revision>41</revision>
+  <description>Version: 0.1.12</description>
+  <revision>42</revision>
   <sourceConnector version="4.5.0">
     <metaDataId>0</metaDataId>
     <name>sourceConnector</name>
@@ -164,6 +164,13 @@ if (requestedPath == &quot;/hl7v2/Bundle/&quot; || requestedPath == &quot;/hl7v2
 
 	//5. Encounter Type
 	checkRequiredHeader(&apos;X-TechBD-Encounter-Type&apos;, &apos;X-TechBD-Encounter-Type&apos;, true, &apos;encounterType&apos;);
+
+	//6. Part 2 Data Flagging 
+	var part2DataFlag = $(&apos;headers&apos;).getHeader(&apos;X-TechBD-Part2&apos;);	
+	logger.info(&quot;X-TechBD-Part2: &quot; + part2DataFlag);
+	if (part2DataFlag &amp;&amp; String(part2DataFlag).trim() !== &quot;&quot;) {
+	    channelMap.put(&apos;X-TechBD-Part2&apos;, part2DataFlag);
+	}
 }
 
 // If any missing headers were found, throw a single error
@@ -1098,6 +1105,13 @@ function set_fhir_resource_profile_urls(transformer) {
 		transformer.setParameter(&quot;OrganizationName&quot;, channelMap.get(&apos;OrganizationName&apos;)); // Pass the parameter to XSLT
 	}
 
+	// Set part2 flag
+     var part2DataFlag = channelMap.get(&apos;X-TechBD-Part2&apos;);
+	var flagValue = &quot;false&quot;;
+	if (part2DataFlag &amp;&amp; String(part2DataFlag).toLowerCase() === &quot;true&quot;) {
+	    flagValue = &quot;true&quot;;
+	}	
+	transformer.setParameter(&apos;X-TechBD-Part2&apos;, flagValue);
 
 	return transformer;
 }
@@ -2242,7 +2256,7 @@ return;</undeployScript>
     <metadata>
       <enabled>true</enabled>
       <lastModified>
-        <time>1771504487927</time>
+        <time>1771571620873</time>
         <timezone>Asia/Calcutta</timezone>
       </lastModified>
       <pruningSettings>
