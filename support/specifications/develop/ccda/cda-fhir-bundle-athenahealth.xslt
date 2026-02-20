@@ -2355,7 +2355,8 @@
           <xsl:when test="$addr/@use='WP'">work</xsl:when>
           <xsl:when test="$addr/@use='TMP'">temp</xsl:when>
           <xsl:when test="$addr/@use='OLD' or $addr/@use='BAD'">old</xsl:when>
-          <xsl:otherwise><xsl:value-of select="$addr/@use"/></xsl:otherwise>
+          <!-- <xsl:otherwise><xsl:value-of select="$addr/@use"/></xsl:otherwise> -->
+          <xsl:otherwise>home</xsl:otherwise>
         </xsl:choose>"
         <xsl:if test="string($formattedAddress) or $addr/ccda:streetAddressLine or string($city) or string($district) or string($state) or string($zip) or string($country)">,</xsl:if>
       </xsl:if>
