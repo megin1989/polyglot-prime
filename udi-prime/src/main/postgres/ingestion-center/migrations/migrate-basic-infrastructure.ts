@@ -1433,7 +1433,7 @@ const migrateSP = pgSQLa.storedProcedure(
 
           -- Insert the test result into the test_results table
           INSERT INTO ${assuranceSchema.sqlNamespace}.${pgTapTestResult.tableName} (migration_version, test_name, tap_output, success, created_by, provenance, techbd_version_number, notok_results)
-          VALUES ('${migrateVersion}', 'test_register_interaction_requests', tap_op, test_result, 'ADMIN', 'pgtap', '0.1027.0', tap_op_failed);
+          VALUES ('${migrateVersion}', 'test_register_interaction_requests', tap_op, test_result, 'ADMIN', 'pgtap', '0.1028.0', tap_op_failed);
 
           -- Check if the test passed
           IF NOT test_result THEN                      
