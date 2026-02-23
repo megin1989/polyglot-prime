@@ -1,6 +1,6 @@
 /*pgTap function to test register_interaction_http_request function*/
 
-DROP FUNCTION IF EXISTS techbd_udi_assurance.test_register_interaction_http_request(text);
+--DROP FUNCTION IF EXISTS techbd_udi_assurance.test_register_interaction_http_request(text);
 DROP FUNCTION IF EXISTS techbd_udi_assurance.test_register_interaction_requests(text);
 CREATE OR REPLACE FUNCTION techbd_udi_assurance.test_register_interaction_requests(schema_name text DEFAULT 'techbd_udi_ingress'::text)
  RETURNS SETOF text
@@ -73,11 +73,11 @@ BEGIN
         'Function sat_interaction_ccda_request_upserted exists'
     );
 	RETURN NEXT has_function('techbd_udi_ingress', 'register_interaction_hl7_request',
-	    ARRAY['text', 'text', 'jsonb', 'text', 'text', 'text', 'jsonb', 'text', 'text', 'jsonb', 'text', 'text', 'text', 'text', 'text', 'text', 'text', 'timestamptz', 'text', 'bool', 'text', 'text', 'text', 'text', 'text', 'text', 'text', 'text', 'text'],
+	    ARRAY['text', 'jsonb', 'text', 'text', 'text', 'jsonb', 'text', 'text', 'jsonb', 'text', 'text', 'text', 'text', 'text', 'text', 'text', 'timestamptz', 'text', 'bool', 'text', 'text', 'text', 'text', 'text', 'text', 'text', 'text', 'text'],
 	    'Function register_interaction_hl7_request exists'
 	);
 	RETURN NEXT has_function('techbd_udi_ingress', 'sat_interaction_hl7_request_upserted',
-	    ARRAY['text', 'text', 'text', 'text', 'text', 'text', 'jsonb', 'text', 'text', 'timestamptz', 'text', 'text', 'jsonb', 'text', 'text', 'text', 'text', 'text'],
+	    ARRAY['text', 'text', 'text', 'text', 'text', 'jsonb', 'text', 'text', 'timestamptz', 'text', 'text', 'jsonb', 'text', 'text', 'text', 'text', 'text'],
 	    'Function sat_interaction_hl7_request_upserted exists'
 	);
 
