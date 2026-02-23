@@ -836,6 +836,7 @@ const migrateSP = pgSQLa.storedProcedure(
 
       ${assuranceSchema}
 
+
       ${diagnosticsSchema}
 
       ${hubDiagnostics}
@@ -1084,7 +1085,12 @@ const migrateSP = pgSQLa.storedProcedure(
 
       ${pgTapFixturesJSON}
 
-      ${pgTapTestResult}        
+      ${pgTapTestResult}   
+      
+      ALTER TABLE ${assuranceSchema.sqlNamespace}.${pgTapTestResult.tableName} ADD COLUMN IF NOT EXISTS sat_pgtap_test_result_id TEXT DEFAULT gen_random_uuid()::text; 
+      ALTER TABLE ${assuranceSchema.sqlNamespace}.${pgTapTestResult.tableName} ADD COLUMN IF NOT EXISTS techbd_version_number TEXT NULL; 
+      ALTER TABLE ${assuranceSchema.sqlNamespace}.${pgTapTestResult.tableName} ADD COLUMN IF NOT EXISTS notok_results TEXT NULL;
+      
         
       PERFORM pg_advisory_lock(hashtext('islm_migration_http_request_index_creation'));
           IF NOT EXISTS (
@@ -1406,9 +1412,7 @@ const migrateSP = pgSQLa.storedProcedure(
 
 
       ${searchPathAssurance}
-      ALTER TABLE ${assuranceSchema.sqlNamespace}.${pgTapTestResult.tableName} ADD COLUMN IF NOT EXISTS sat_pgtap_test_result_id TEXT DEFAULT gen_random_uuid()::text; 
-      ALTER TABLE ${assuranceSchema.sqlNamespace}.${pgTapTestResult.tableName} ADD COLUMN IF NOT EXISTS techbd_version_number TEXT NULL; 
-      ALTER TABLE ${assuranceSchema.sqlNamespace}.${pgTapTestResult.tableName} ADD COLUMN IF NOT EXISTS notok_results TEXT NULL;
+
 
       DECLARE
         tap_op TEXT := '';
