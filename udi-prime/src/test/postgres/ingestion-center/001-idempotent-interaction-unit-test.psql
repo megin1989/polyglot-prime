@@ -73,11 +73,11 @@ BEGIN
         'Function sat_interaction_ccda_request_upserted exists'
     );
 	RETURN NEXT has_function('techbd_udi_ingress', 'register_interaction_hl7_request',
-	    ARRAY['text', 'jsonb', 'text', 'text', 'text', 'jsonb', 'text', 'text', 'jsonb', 'text', 'text', 'text', 'text', 'text', 'text', 'text', 'timestamptz', 'text', 'bool', 'text', 'text', 'text', 'text', 'text', 'text', 'text', 'text', 'text'],
+	    ARRAY['text', 'text', 'jsonb', 'text', 'text', 'text', 'jsonb', 'text', 'text', 'jsonb', 'text', 'text', 'text', 'text', 'text', 'text', 'text', 'timestamptz', 'text', 'bool', 'text', 'text', 'text', 'text', 'text', 'text', 'text', 'text', 'text'],
 	    'Function register_interaction_hl7_request exists'
 	);
 	RETURN NEXT has_function('techbd_udi_ingress', 'sat_interaction_hl7_request_upserted',
-	    ARRAY['text', 'text', 'text', 'text', 'text', 'jsonb', 'text', 'text', 'timestamptz', 'text', 'text', 'jsonb', 'text', 'text', 'text', 'text', 'text'],
+	    ARRAY['text', 'text', 'text', 'text', 'text', 'text', 'jsonb', 'text', 'text', 'timestamptz', 'text', 'text', 'jsonb', 'text', 'text', 'text', 'text', 'text'],
 	    'Function sat_interaction_hl7_request_upserted exists'
 	);
 
