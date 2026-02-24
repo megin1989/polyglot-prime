@@ -63,7 +63,7 @@
                 const file_name = test_name + '_' + sat_pgtap_test_result_id + '.txt';
 
                 // Create the URL for the API call                
-                const apiUrl = `/api/ux/tabular/jooq/download/${schemaName}/pgtap_test_result/test_name/sat_pgtap_test_result_id/${sat_pgtap_test_result_id}?fileName=${file_name}`;
+                const apiUrl = `/api/ux/tabular/jooq/download/${schemaName}/pgtap_test_result/tap_output/sat_pgtap_test_result_id/${sat_pgtap_test_result_id}?fileName=${file_name}`;
 
                 // Create a download link placeholder
                 const downloadLink = `<a href="${apiUrl}" title="${file_name}" return false;" style="text-decoration: none; color: #007bff;">
@@ -130,16 +130,16 @@
                             };
                         }
                     },
-                    // {
-                    //     headerName: "pgTAP Output",
-                    //     field: "tap_output",
-                    //     sortable: false,
-                    //     filter: "agTextColumnFilter",
-                    //     headerTooltip: "Detailed TAP output message from the test execution",
-                    //     cellClass: "flex justify-center items-center",
-                    //     cellRenderer: downloadCellRenderer,
-                    //     filter: false, suppressFilter: true, sortable: false
-                    // }
+                    {
+                         headerName: "pgTAP Output",
+                         field: "tap_output",
+                         sortable: false,
+                         filter: "agTextColumnFilter",
+                         headerTooltip: "Detailed TAP output message from the test execution",
+                         cellClass: "flex justify-center items-center",
+                         cellRenderer: downloadCellRenderer,
+                         filter: false, suppressFilter: true, sortable: false
+                    }
                 ])
                 .withServerSideDatasource(
                     window.shell.serverSideUrl(`/api/ux/tabular/jooq/${schemaName}/${viewName}.json`),
@@ -174,7 +174,7 @@
 <body>
     <div layout:fragment="content">
         <div class="grid-description">
-        This widget displays pgTAP test execution results for database migrations. It includes columns for Created Date, Test Name, and Success Status.</br>
+        This widget displays pgTAP test execution results for database migrations. It includes columns for Created Date, Test Name, Success Status and pgTAP Output download.</br>
         Users can click on the Success Status (when the test has failed) to view the detailed Execution Log. This allows users to quickly identify failed test cases and review the corresponding failure details.
         </div>
         <div id="serverDataGrid" class="ag-theme-alpine"></div>
