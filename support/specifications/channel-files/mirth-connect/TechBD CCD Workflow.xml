@@ -2,8 +2,8 @@
   <id>0cefb37a-ca0a-48cc-85a1-aa0b727d26a2</id>
   <nextMetaDataId>12</nextMetaDataId>
   <name>TechBD CCD Workflow</name>
-  <description>Version: 0.4.42</description>
-  <revision>41</revision>
+  <description>Version: 0.4.43</description>
+  <revision>49</revision>
   <sourceConnector version="4.5.0">
     <metaDataId>0</metaDataId>
     <name>sourceConnector</name>
@@ -55,7 +55,7 @@
         <entry>
           <string>Access-Control-Allow-Headers</string>
           <list>
-            <string>Content-Type,Authorization,X-TechBD-Tenant-ID,User-Agent,X-TechBD-REMOTE-IP,X-TechBD-Override-Request-URI,accept,X-TechBD-CIN,X-TechBD-OrgNPI,X-TechBD-OrgTIN,X-TechBD-Base-FHIR-URL,X-TechBD-Validation-Severity-Level,X-TechBD-Facility-ID,X-TechBD-Encounter-Type,X-TechBD-Screening-Code</string>
+            <string>Content-Type,Authorization,X-TechBD-Tenant-ID,User-Agent,X-TechBD-REMOTE-IP,X-TechBD-Override-Request-URI,accept,X-TechBD-CIN,X-TechBD-OrgNPI,X-TechBD-OrgTIN,X-TechBD-Base-FHIR-URL,X-TechBD-Validation-Severity-Level,X-TechBD-Facility-ID,X-TechBD-Encounter-Type,X-TechBD-Screening-Code,X-TechBD-Part2</string>
           </list>
         </entry>
         <entry>
@@ -483,7 +483,7 @@ function extractBoundaries(rawCcdaXml) {
 				    .replace(/^ï»¿/, &apos;&apos;)        // mis-decoded BOM
 				    .trim();		
 		logger.info(&quot;rawXml 2: &quot; + rawXml);
-		if (rawXml.indexOf(&quot;Content-Type:&quot;) !== -1) {			
+		//if (rawXml.indexOf(&quot;Content-Type:&quot;) !== -1) {			
 	        // Extract everything after first blank line
 	        var match = rawXml.match(/\r?\n\r?\n([\s\S]*)/);
 	        if (match &amp;&amp; match[1]) {
@@ -495,7 +495,7 @@ function extractBoundaries(rawCcdaXml) {
 	        rawXml = rawXml.replace(/\r?\n--.*--\r?\n?$/, &apos;&apos;);
 	        rawXml = rawXml.replace(/\r?\n--.*$/, &apos;&apos;);
 	        logger.info(&quot;rawXml 4: &quot; + rawXml);
-	    }
+	    //}
 	    rawXml = String(rawXml)
 				    .replace(/^\uFEFF/, &apos;&apos;)      // real BOM
 				    .replace(/^ï»¿/, &apos;&apos;)        // mis-decoded BOM
@@ -2550,7 +2550,7 @@ return;</undeployScript>
     <metadata>
       <enabled>true</enabled>
       <lastModified>
-        <time>1771571148530</time>
+        <time>1772018319590</time>
         <timezone>Asia/Calcutta</timezone>
       </lastModified>
       <pruningSettings>
