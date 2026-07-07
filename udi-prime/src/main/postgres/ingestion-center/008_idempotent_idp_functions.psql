@@ -270,7 +270,8 @@ CREATE OR REPLACE VIEW techbd_udi_ingress.idp_vw_roles
 AS SELECT 
       role_id,
       role_code,
-      display_name AS role_name
+      display_name AS role_name,
+      description
    FROM techbd_udi_ingress.idp_roles
    WHERE NOT is_admin AND is_active;
 
@@ -289,6 +290,7 @@ DECLARE
       'sat_interaction_hl7_request',
       'sat_interaction_http_request',
       'sat_interaction_user',
+      'sat_interaction_ui_user',
       'sat_interaction_zip_file_request',
       'sat_diagnostic_dataledger_api',
       'sat_diagnostic_exception',
@@ -304,7 +306,9 @@ DECLARE
 
     table_names_insert TEXT[] := ARRAY[
       'hub_diagnostic',
-      'sat_diagnostic_log'
+      'sat_diagnostic_log',
+      'sat_interaction_ui_user',
+      'hub_interaction'
     ];
 
     admin_role text := current_setting('jwt.claims.admin_roles', true);
@@ -315,17 +319,11 @@ DECLARE
     tbl TEXT;
     tenant_col TEXT := 'tenant_id'; -- adjust if column differs per table
 BEGIN
-    -- Add tenant_id column to the following tables
-    ALTER TABLE techbd_udi_ingress.sat_diagnostic_dataledger_api ADD COLUMN IF NOT EXISTS tenant_id TEXT;
-    ALTER TABLE techbd_udi_ingress.sat_diagnostic_exception ADD COLUMN IF NOT EXISTS tenant_id TEXT;
-    ALTER TABLE techbd_udi_ingress.sat_diagnostic_log ADD COLUMN IF NOT EXISTS tenant_id TEXT;
-    ALTER TABLE techbd_udi_ingress.sat_expectation_http_request ADD COLUMN IF NOT EXISTS tenant_id TEXT;
-    ALTER TABLE techbd_udi_ingress.sat_interaction_fhir_validation_issue ADD COLUMN IF NOT EXISTS tenant_id TEXT;
-    ALTER TABLE techbd_udi_ingress.sat_interaction_file_exchange ADD COLUMN IF NOT EXISTS tenant_id TEXT;
-    ALTER TABLE techbd_udi_ingress.sat_interaction_fhir_screening_info ADD COLUMN IF NOT EXISTS tenant_id TEXT;
-    ALTER TABLE techbd_udi_ingress.sat_interaction_fhir_screening_organization ADD COLUMN IF NOT EXISTS tenant_id TEXT;
-    ALTER TABLE techbd_udi_ingress.sat_interaction_fhir_screening_patient ADD COLUMN IF NOT EXISTS tenant_id TEXT;
-    ALTER TABLE techbd_udi_ingress.sat_interaction_http_request ADD COLUMN IF NOT EXISTS tenant_id TEXT;
+    IF EXISTS (
+        SELECT 1 FROM pg_roles WHERE rolname = 'postgres'
+    ) THEN
+        SET ROLE postgres;
+    END IF;    
 
     -- Create roles only if they do not already exist
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'Super_Admin') THEN
@@ -355,9 +353,7 @@ BEGIN
 
     -- This will set neondb_owner or default role to get membership of role Super_Admin
     IF EXISTS (
-        SELECT 1
-        FROM pg_roles
-        WHERE rolname = 'postgres'
+        SELECT 1 FROM pg_roles WHERE rolname = 'postgres'
     ) THEN
         EXECUTE 'GRANT "Super_Admin", "Offshore_Admin", "Tenant_Admin", "NYeC_Admin" TO postgres';
     END IF;
@@ -366,24 +362,28 @@ BEGIN
     -- Controls whether a role is allowed to access objects inside the schema at all
     EXECUTE format('GRANT USAGE ON SCHEMA techbd_udi_ingress TO "Super_Admin", "Offshore_Admin", "Tenant_Admin", "NYeC_Admin", "1115_User", "MCO_User";');
 
+    -- Grant EXECUTE permission to all existing routines (functions and procedures)
+    GRANT EXECUTE ON ALL ROUTINES IN SCHEMA techbd_udi_ingress TO "Super_Admin", "Offshore_Admin", "Tenant_Admin", "NYeC_Admin", "1115_User", "MCO_User";
+
+    -- Grant EXECUTE permission to all Future routines (functions and procedures)
+    ALTER DEFAULT PRIVILEGES IN SCHEMA techbd_udi_ingress GRANT EXECUTE ON ROUTINES TO "Super_Admin", "Offshore_Admin", "Tenant_Admin", "NYeC_Admin", "1115_User", "MCO_User";
+
     -- Grants read-only access to all "current tables" in the schema techbd_udi_ingress for the roles Super_Admin, Offshore_Admin, and Tenant_Admin
     EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA techbd_udi_ingress TO "Super_Admin", "Offshore_Admin", "Tenant_Admin", "NYeC_Admin", "1115_User", "MCO_User";');
-    --GRANT INSERT ON techbd_udi_ingress.hub_diagnostic TO "Super_Admin", "Offshore_Admin", "Tenant_Admin", "NYeC_Admin", "1115_User", "MCO_User";
-    --GRANT INSERT ON techbd_udi_ingress.sat_diagnostic_log TO "Super_Admin", "Offshore_Admin", "Tenant_Admin", "1115_User", "MCO_User";
-
-    -- Grant select permission to all "current views" starting with 'fusion' in the database schema
-        -- Aggregate the GRANT statements into the qry variable
-        SELECT string_agg(format(
-                'GRANT SELECT ON %I.%I TO "Super_Admin", "Offshore_Admin", "Tenant_Admin", "NYeC_Admin", "1115_User", "MCO_User";',
-                schemaname, viewname), E'\n')
-        INTO qry
-        FROM pg_catalog.pg_views
-        WHERE schemaname IN ('techbd_udi_ingress');
     
-        -- If qry is populated (i.e., not NULL), execute the GRANT statements
-        IF qry IS NOT NULL THEN
-            EXECUTE qry;
-        END IF;
+    -- Grant select permission to all "current views" starting with 'fusion' in the database schema
+    -- Aggregate the GRANT statements into the qry variable
+    SELECT string_agg(format(
+            'GRANT SELECT ON %I.%I TO "Super_Admin", "Offshore_Admin", "Tenant_Admin", "NYeC_Admin", "1115_User", "MCO_User";',
+            schemaname, viewname), E'\n')
+    INTO qry
+    FROM pg_catalog.pg_views
+    WHERE schemaname IN ('techbd_udi_ingress');
+
+    -- If qry is populated (i.e., not NULL), execute the GRANT statements
+    IF qry IS NOT NULL THEN
+        EXECUTE qry;
+    END IF;
 
     -- Ensure future tables will also inherit SELECT GRANT permission to 3 roles
     ALTER DEFAULT PRIVILEGES IN SCHEMA techbd_udi_ingress
@@ -418,31 +418,46 @@ BEGIN
         EXECUTE format('ALTER TABLE techbd_udi_ingress.%I FORCE ROW LEVEL SECURITY;', tbl);
     END LOOP;
 
-    /*FOR j IN 1..array_length(table_names_insert, 1) LOOP
+    FOR j IN 1..array_length(table_names_insert, 1) LOOP
         tbl := table_names_insert[j];
-        EXECUTE format('DROP POLICY IF EXISTS insert_policy_%I ON techbd_udi_ingress.%I;', tbl, tbl);
-        
-        -- Tenant Admin policy (sees all tenants)
-        qry := format($POLICY$
-        CREATE POLICY insert_policy_%I
-        ON techbd_udi_ingress.%I
-        FOR INSERT
-        WITH CHECK (
-            EXISTS (
-                SELECT 1
-                FROM unnest(string_to_array(current_setting('jwt.claims.user_roles', true), ',')) AS user_role
-                JOIN unnest(string_to_array(current_setting('jwt.claims.admin_roles', true), ',')) AS admin_role
-                ON lower(trim(user_role)) = lower(trim(admin_role))
+
+        EXECUTE format('GRANT INSERT ON techbd_udi_ingress.%I TO "Super_Admin", "NYeC_Admin", "Offshore_Admin", "Tenant_Admin", "1115_User", "MCO_User";', tbl);
+
+        IF tbl NOT IN ('hub_diagnostic', 'hub_interaction') THEN
+            EXECUTE format('DROP POLICY IF EXISTS insert_policy_%I ON techbd_udi_ingress.%I;', tbl, tbl);
+            
+            -- Tenant Admin policy (sees all tenants)
+            qry := format($POLICY$
+            CREATE POLICY insert_policy_%I
+            ON techbd_udi_ingress.%I
+            FOR INSERT
+            WITH CHECK (
+                EXISTS (
+                    SELECT 1
+                    FROM unnest(string_to_array(current_setting('jwt.claims.user_roles', true), ',')) AS user_role
+                    JOIN unnest(string_to_array(current_setting('jwt.claims.admin_roles', true), ',')) AS admin_role
+                        ON lower(trim(user_role)) = lower(trim(admin_role))
+                )
+                OR (
+                    LOWER(TRIM(%I)) = ANY(
+                        string_to_array(
+                            LOWER(current_setting('jwt.claims.tenants', true)),
+                            ','
+                        )
+                    )
+                )
             )
-        )
-        $POLICY$, tbl, tbl);
-        
-        EXECUTE qry;
-        
-        -- Enable row level security
-        EXECUTE format('ALTER TABLE techbd_udi_ingress.%I ENABLE ROW LEVEL SECURITY;', tbl);
-        EXECUTE format('ALTER TABLE techbd_udi_ingress.%I FORCE ROW LEVEL SECURITY;', tbl);
-    END LOOP;*/
+            $POLICY$, tbl, tbl, tenant_col);
+            
+            EXECUTE qry;
+            
+            -- Enable row level security
+            EXECUTE format('ALTER TABLE techbd_udi_ingress.%I ENABLE ROW LEVEL SECURITY;', tbl);
+            EXECUTE format('ALTER TABLE techbd_udi_ingress.%I FORCE ROW LEVEL SECURITY;', tbl);
+        END IF;
+    END LOOP;
+
+    GRANT DELETE ON techbd_udi_ingress.idp_role_tenant_permission TO "Super_Admin";    
 END;
 $$;
 
@@ -499,7 +514,8 @@ BEGIN
 
     -- Determine effective role name based on user_roles
     SELECT CASE
-        --WHEN LOWER(user_roles) LIKE '%nyec_admin%' THEN 'NYeC_Admin'
+        WHEN LOWER(user_roles) LIKE '%super_admin%' THEN 'Super_Admin'
+		WHEN LOWER(user_roles) LIKE '%nyec_admin%' THEN 'NYeC_Admin'
         WHEN LOWER(user_roles) LIKE '%tenant_admin%' THEN 'Tenant_Admin'
         WHEN LOWER(user_roles) LIKE '%offshore_admin%' THEN 'Offshore_Admin'
         WHEN LOWER(user_roles) LIKE '%mco_user%' THEN 'MCO_User'

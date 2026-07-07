@@ -30,12 +30,12 @@ END IF;
 INSERT INTO techbd_udi_ingress.idp_roles
 (role_code, role_name, display_name, description, is_admin, is_active, provenance, created_by)
 VALUES
-('rl_1115_user', '1115_User', '1115 User', 'Sees current 1115 screens, auto-filtered by tenant', FALSE, TRUE, 'Fusion Auth', CURRENT_USER),
-('rl_nyec_admin', 'NYeC_Admin', 'NYeC Admin', 'NYeC users, also sees everything but separating the role for future use-cases', FALSE, TRUE, 'Fusion Auth', CURRENT_USER),
-('rl_offshore_admin', 'Offshore_Admin', 'Offshore Admin', 'Sees all 1115 and new MCO screens, excluding defined Tenants (like NYeC, HeL, etc)', FALSE, TRUE, 'Fusion Auth', CURRENT_USER),
-('rl_tenant_admin', 'Tenant_Admin', 'Tenant Admin', 'Sees all 1115 and new MCO screens, auto-filtered by Tenant', FALSE, TRUE, 'Fusion Auth', CURRENT_USER),
-('rl_super_admin', 'Super_Admin', 'Super Admin', 'Tech by Design users, sees everything', TRUE, TRUE, 'Fusion Auth', CURRENT_USER),
-('rl_mco_user', 'MCO_User', 'MCO User', 'Sees new screens for MCO, auto-filtered by tenant', FALSE, TRUE, 'Fusion Auth', CURRENT_USER)
+('rl_1115_user', '1115_User', '1115 User', NULL, FALSE, TRUE, 'Fusion Auth', CURRENT_USER),
+('rl_nyec_admin', 'NYeC_Admin', 'NYeC Admin', NULL, FALSE, TRUE, 'Fusion Auth', CURRENT_USER),
+('rl_offshore_admin', 'Offshore_Admin', 'Offshore Admin', NULL, FALSE, TRUE, 'Fusion Auth', CURRENT_USER),
+('rl_tenant_admin', 'Tenant_Admin', 'Tenant Admin', NULL, FALSE, TRUE, 'Fusion Auth', CURRENT_USER),
+('rl_super_admin', 'Super_Admin', 'Super Admin', NULL, TRUE, TRUE, 'Fusion Auth', CURRENT_USER),
+('rl_mco_user', 'MCO_User', 'MCO User', NULL, FALSE, TRUE, 'Fusion Auth', CURRENT_USER)
 ON CONFLICT (role_code) DO NOTHING;
 
 /* Tenant insertion */
@@ -85,6 +85,8 @@ VALUES
 ('scr_HL7_Data_Quality', 'HL7v2 Data Quality', 'HL7v2 Data Quality Screen', 'page', 3, 5, TRUE, 'Hub UI', CURRENT_USER),  /*new */
 ('scr_IG_Publication_Issues', 'IG Publication Issues', 'IG Publication Issues screen', 'page', 3, 6, TRUE, 'Hub UI', CURRENT_USER),
 ('scr_FHIR_Rules', 'FHIR Rules', 'FHIR Rules screen', 'page', 3, 7, TRUE, 'Hub UI', CURRENT_USER),
+('scr_CSV_Issues_Summary', 'CSV Issues Summary', 'CSV Issues Summary screen', 'page', 3, 8, TRUE, 'Hub UI', CURRENT_USER),
+('scr_CSV_Issues', 'CSV Issues', 'CSV Issues screen', 'page', 3, 9, TRUE, 'Hub UI', CURRENT_USER),
 
 ('scr_FHIR_via_HTTPS', 'FHIR Data', 'FHIR Data screen', 'page', 4, 1, TRUE, 'Hub UI', CURRENT_USER),
 ('scr_FHIR_via_HTTPS_FAILED', 'FHIR FAILED Submissions', 'FHIR FAILED Submissions screen', 'page', 4, 2, TRUE, 'Hub UI', CURRENT_USER),
