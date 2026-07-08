@@ -266,7 +266,7 @@ $$;
 
 /*View that lists all active, non-admin roles (is_admin = false) from the idp_roles table.*/
 DROP VIEW IF EXISTS techbd_udi_ingress.idp_vw_roles;
-CREATE OR REPLACE VIEW techbd_udi_ingress.idp_vw_roles
+CREATE OR REPLACE VIEW techbd_udi_ingress.idp_vw_roles WITH (security_invoker = true)
 AS SELECT 
       role_id,
       role_code,
@@ -323,7 +323,8 @@ BEGIN
         SELECT 1 FROM pg_roles WHERE rolname = 'postgres'
     ) THEN
         SET ROLE postgres;
-    END IF;    
+    END IF;  
+    --SET ROLE neon_aws_aurora_dev_owner;
 
     -- Create roles only if they do not already exist
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'Super_Admin') THEN
@@ -472,13 +473,23 @@ DECLARE
     tenants TEXT;
     role_to_set TEXT;
 BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_roles WHERE rolname = 'postgres'
+    ) THEN
+        SET ROLE postgres;
+    END IF;  
+    --SET ROLE neon_aws_aurora_dev_owner;
+    
     -- super_role_name is a single text value
     user_roles := array_to_string(ARRAY(
-        SELECT lower(jsonb_array_elements_text(token->'roles'))
+        SELECT jsonb_array_elements_text(token->'roles')
     ), ',');
     --RAISE NOTICE 'user_roles = %', user_roles;
     -- roles is an array
-    admin_roles := token->>'super_role_name';
+    --admin_roles := token->>'super_role_name';
+    admin_roles := array_to_string(ARRAY(
+        SELECT jsonb_array_elements_text(token->'super_role_name')
+    ), ',');
     --RAISE NOTICE 'admin_roles = %', admin_roles;
     -- groups is an array
     SELECT array_to_string(
@@ -527,5 +538,5 @@ BEGIN
 
     RETURN role_to_set;
 --    RETURN tenants;
-END
+END;
 $function$;

@@ -8,7 +8,8 @@ VALUES
 ('mnu_Interactions', 'Interactions', 'Interactions menu', 4, TRUE, 'Hub UI Menu', CURRENT_USER),
 ('mnu_Documentation', 'Documentation', 'Documentation menu', 5, TRUE, 'Hub UI Menu', CURRENT_USER),
 ('mnu_Console', 'Console', 'Console menu', 6, TRUE, 'Hub UI Menu', CURRENT_USER),
-('mnu_Settings', 'Settings', 'Settings menu', 7, TRUE, 'Hub UI Menu', CURRENT_USER)
+('mnu_Settings', 'Settings', 'Settings menu', 7, TRUE, 'Hub UI Menu', CURRENT_USER),
+('mnu_Monitoring', 'Monitoring', 'Monitoring menu', 8, TRUE, 'Hub UI Menu', CURRENT_USER)
 ON CONFLICT (mnu_code) DO NOTHING;
 
 /* Role insertion */
@@ -101,14 +102,17 @@ VALUES
 
 ('scr_Tech_By_Design_Hub', 'Tech by Design Hub', 'Tech By Design Hub screen', 'page', 5, 1, TRUE, 'Hub UI', CURRENT_USER),
 ('scr_SHIN_NY_FHIR_IG', 'SHIN-NY FHIR IG', 'SHIN NY FHIR IG screen', 'page', 5, 2, TRUE, 'Hub UI', CURRENT_USER),
-('scr_OpenAPI_UI', 'OpenAPI UI', 'Tech by Design OpenAPI UI screen', 'page', 5, 3, TRUE, 'Hub UI', CURRENT_USER),
+('scr_OpenAPI_UI', 'OpenAPI UI', 'OpenAPI UI screen', 'page', 5, 3, TRUE, 'Hub UI', CURRENT_USER),
 ('scr_Announcements', 'Announcements', 'Announcements screen', 'page', 5, 4, TRUE, 'Hub UI', CURRENT_USER),
+('scr_TechBD_OpenAPI_UI', 'Tech by Design OpenAPI UI', 'Tech by Design OpenAPI UI screen', 'page', 5, 5, TRUE, 'Hub UI', CURRENT_USER),
 
 ('scr_Health_Information', 'Health Information', 'Health Information screen', 'page', 6, 1, TRUE, 'Hub UI', CURRENT_USER),
 ('scr_Project', 'Project', 'Project screen', 'page', 6, 2, TRUE, 'Hub UI', CURRENT_USER),
 ('scr_Schema', 'Schema', 'Schema Screen', 'page', 6, 3, TRUE, 'Hub UI', CURRENT_USER),
 ('scr_ISLM_Migration', 'ISLM Migration', 'ISLM Migration screen', 'page', 6, 4, TRUE, 'Hub UI', CURRENT_USER),
-('scr_pgTAP_Test_Results', 'pgTAP Test Results', 'pgTAP Test Results screen', 'page', 6, 5, TRUE, 'Hub UI', CURRENT_USER)  /*new */
+('scr_pgTAP_Test_Results', 'pgTAP Test Results', 'pgTAP Test Results screen', 'page', 6, 5, TRUE, 'Hub UI', CURRENT_USER),
+
+('scr_Source_Monitoring', 'Source Monitoring', 'Source Monitoring screen', 'page', 8, 1, TRUE, 'Hub UI', CURRENT_USER)
 
 --('scr_Profile', 'Profile', 'Profile screen', 'page', 35, 5, TRUE, 'Hub UI', CURRENT_USER),
 --('scr_Role', 'Role', 'Role screen', 'page', 35, 6, TRUE, 'Hub UI', CURRENT_USER)
@@ -117,5 +121,7 @@ ON CONFLICT (scr_code) DO NOTHING;
 
 UPDATE techbd_udi_ingress.idp_screens SET order_no = 9 WHERE scr_code = 'scr_Provenance';
 UPDATE techbd_udi_ingress.idp_screens SET order_no = 10 WHERE scr_code = 'scr_User_Sessions';
-UPDATE techbd_udi_ingress.idp_screens SET description = 'Tech by Design OpenAPI UI screen' WHERE scr_code = 'scr_OpenAPI_UI';
+UPDATE techbd_udi_ingress.idp_screens SET description = 'OpenAPI UI screen' WHERE scr_code = 'scr_OpenAPI_UI';
 DELETE FROM techbd_udi_ingress.idp_screens WHERE scr_code = 'scr_Perfomance_overview';
+
+UPDATE techbd_udi_ingress.tenants SET tenant_short_code = tenant_name WHERE tenant_type = 'QE';

@@ -778,6 +778,9 @@ const tenant = SQLa.tableDefinition("tenants", {
     is_active:boolean().default(true),
     fusion_auth_group_id:textNullable(),
     //offshore_access_allowed:boolean().default(true),
+    tenant_type:textNullable().default("QE"),
+    tenant_short_code:textNullable(),
+    elaboration:jsonbNullable(),
     ...dvts.housekeeping.columns
   }, {
   isIdempotent: true,
@@ -1729,6 +1732,36 @@ const migrateSP = pgSQLa.storedProcedure(
                 AND column_name = 'fusion_auth_group_id'
       ) THEN
             ALTER TABLE techbd_udi_ingress.tenants ADD COLUMN IF NOT EXISTS fusion_auth_group_id TEXT;
+      END IF;
+
+      IF NOT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'techbd_udi_ingress'
+                AND table_name = 'tenants'
+                AND column_name = 'tenant_type'
+      ) THEN
+            ALTER TABLE techbd_udi_ingress.tenants ADD COLUMN IF NOT EXISTS tenant_type TEXT DEFAULT 'QE';
+      END IF;
+
+      IF NOT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'techbd_udi_ingress'
+                AND table_name = 'tenants'
+                AND column_name = 'tenant_short_code'
+      ) THEN
+            ALTER TABLE techbd_udi_ingress.tenants ADD COLUMN IF NOT EXISTS tenant_short_code TEXT;
+      END IF;
+
+      IF NOT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'techbd_udi_ingress'
+                AND table_name = 'tenants'
+                AND column_name = 'elaboration'
+      ) THEN
+            ALTER TABLE techbd_udi_ingress.tenants ADD COLUMN IF NOT EXISTS elaboration jsonb;
       END IF;
 
       ${userSessions}
