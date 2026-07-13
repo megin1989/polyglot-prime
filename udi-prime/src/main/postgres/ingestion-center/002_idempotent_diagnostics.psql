@@ -6,7 +6,7 @@
  /*
 DROP VIEW IF EXISTS techbd_udi_ingress.orch_session_diagnostics_rejection CASCADE;
 CREATE or REPLACE
-view techbd_udi_ingress.orch_session_diagnostics_rejection AS
+view techbd_udi_ingress.orch_session_diagnostics_rejection WITH (security_invoker = true) AS
 SELECT 
 	orch_started_at,
 	qe, 
@@ -166,7 +166,7 @@ END $$;
 */
 
 DROP VIEW IF EXISTS techbd_udi_ingress.diagnostics_exception_details CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.diagnostics_exception_details AS
+CREATE OR REPLACE VIEW techbd_udi_ingress.diagnostics_exception_details WITH (security_invoker = true) AS
 SELECT
     message,
     err_pg_exception_detail,
@@ -182,7 +182,7 @@ FROM
 
 
 DROP VIEW IF EXISTS techbd_udi_ingress.diagnostics_exception_summary CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.diagnostics_exception_summary AS
+CREATE OR REPLACE VIEW techbd_udi_ingress.diagnostics_exception_summary WITH (security_invoker = true) AS
 SELECT
     message,
     err_pg_exception_detail, 
@@ -205,7 +205,7 @@ FROM
 */
 
 DROP VIEW IF EXISTS techbd_udi_assurance.v_pgtap_test_result CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_assurance.v_pgtap_test_result AS
+CREATE OR REPLACE VIEW techbd_udi_assurance.v_pgtap_test_result WITH (security_invoker = true) AS
 SELECT
     migration_version,
     test_name,

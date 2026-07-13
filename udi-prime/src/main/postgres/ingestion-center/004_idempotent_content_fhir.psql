@@ -4,7 +4,7 @@
 
 DROP VIEW IF EXISTS techbd_udi_ingress.fhir_screening_info CASCADE;  
 CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_screening_info
-AS SELECT hub_interaction_id,
+WITH (security_invoker = true) AS SELECT hub_interaction_id,
     qe_name,
     org_id,
     org_name,
@@ -32,7 +32,7 @@ AS SELECT hub_interaction_id,
  ******************************************************************************************/
 DROP VIEW IF EXISTS techbd_udi_ingress.fhir_patient_screening_questions_answers CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_patient_screening_questions_answers
-AS WITH filtered_resources AS (
+WITH (security_invoker = true) AS WITH filtered_resources AS (
     SELECT
         sihr.hub_interaction_id,
         sihr.tenant_name AS tenant_id,
@@ -257,7 +257,7 @@ $$ language plpgsql;
  ******************************************************************************************/
 DROP VIEW IF EXISTS techbd_udi_ingress.fhir_screening_detail CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_screening_detail
-AS  WITH filtered_resources AS (
+WITH (security_invoker = true) AS  WITH filtered_resources AS (
          SELECT sihr.hub_interaction_id,
             sihr.tenant_name AS tenant_id,
             jsonb_array_elements(sihr.payload -> 'entry'::text) AS entry
@@ -288,7 +288,7 @@ AS  WITH filtered_resources AS (
  ******************************************************************************************/
 DROP VIEW IF EXISTS techbd_udi_ingress.fhir_screening_patient CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_screening_patient
-AS 
+WITH (security_invoker = true) AS 
  SELECT  qe_name,
      patient_mrn,
     max(patient_id) AS patient_id,
@@ -317,7 +317,7 @@ AS
  ******************************************************************************************/
 DROP VIEW IF EXISTS techbd_udi_ingress.fhir_screening_organization CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_screening_organization
-AS 
+WITH (security_invoker = true) AS 
 SELECT
     sifso.qe_name,
     sifso.org_id,
@@ -362,7 +362,7 @@ ORDER BY MAX(sifso.created_at) DESC;
 
 DROP VIEW IF EXISTS techbd_udi_ingress.fhir_validation_issue_details CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_validation_issue_details
-AS SELECT validation_engine,
+WITH (security_invoker = true) AS SELECT validation_engine,
     issue,
     severity as issue_severity,
     count(*) AS issue_count,
@@ -492,7 +492,7 @@ $function$;
 
 DROP VIEW IF EXISTS techbd_udi_ingress.fhir_validation_issue CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_validation_issue
-AS 
+WITH (security_invoker = true) AS 
 SELECT
     validation_engine,
     MAX(date_time::date) AS issue_date,
@@ -533,7 +533,7 @@ GROUP BY
 -- ============================================================
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_recent_widget_new CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_recent_widget_new AS
+CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_recent_widget_new WITH (security_invoker = true) AS
 SELECT 
     widget_name,
     tenant_name AS tenant_id,
