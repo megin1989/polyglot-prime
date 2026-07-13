@@ -1,4 +1,8 @@
 /* Menu insertion */
+IF EXISTS (SELECT 1 FROM techbd_udi_ingress.idp_menu WHERE mnu_code = 'mnu_Monitoring') THEN
+    TRUNCATE TABLE techbd_udi_ingress.idp_menu RESTART IDENTITY CASCADE;
+END IF;
+
 INSERT INTO techbd_udi_ingress.idp_menu
 (mnu_code, mnu_name, description, order_no, is_active, provenance, created_by)
 VALUES

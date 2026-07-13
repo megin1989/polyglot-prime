@@ -392,3 +392,18 @@ BEGIN
 END;
 $function$
 ;
+
+DROP FUNCTION IF EXISTS techbd_udi_ingress.get_active_tenants();
+CREATE OR REPLACE FUNCTION techbd_udi_ingress.get_active_tenants()
+ RETURNS TABLE(p_tenant_id text, p_tenant_name text)
+ LANGUAGE plpgsql
+AS $function$ 
+BEGIN
+    RETURN QUERY
+    SELECT tenant_id, tenant_name
+    FROM techbd_udi_ingress.tenants
+    WHERE is_active = true
+ORDER BY tenant_name ASC;
+END;
+$function$
+;
