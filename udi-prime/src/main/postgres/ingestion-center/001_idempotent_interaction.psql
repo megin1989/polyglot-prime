@@ -15,7 +15,7 @@
  ****************************************************************************************/
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_http_request CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_http_request
-AS 
+WITH (security_invoker = true) AS 
 SELECT interaction_id,
     uri,
     interaction_created_at,
@@ -97,7 +97,7 @@ interaction details, request attributes, and validation issues.
 ******************************************************************************************/
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_http_fhir_request CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_http_fhir_request
-AS SELECT hub_interaction_id AS interaction_id,
+WITH (security_invoker = true) AS SELECT hub_interaction_id AS interaction_id,
     uri,
     bundle_id,
     created_at AS interaction_created_at,
@@ -154,7 +154,7 @@ AS SELECT hub_interaction_id AS interaction_id,
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_http_fhir_request_details CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_http_fhir_request_details
-AS  
+WITH (security_invoker = true) AS  
 SELECT hub_interaction_id AS interaction_id,
     uri,
     bundle_id,
@@ -185,7 +185,7 @@ SELECT hub_interaction_id AS interaction_id,
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_http_fhir_request_payload_details CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_http_fhir_request_payload_details
-AS  
+WITH (security_invoker = true) AS  
 SELECT hub_interaction_id AS interaction_id,
     uri,
     bundle_id,
@@ -217,7 +217,7 @@ the bundle is valid and excludes records targeting the '/api/expect/fhir/bundle'
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_http_fhir_request_summary CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_http_fhir_request_summary
-AS SELECT  created_at AS interaction_created_at,
+WITH (security_invoker = true) AS SELECT  created_at AS interaction_created_at,
     hub_interaction_id AS interaction_id,
     uri,
     tenant_name AS tenant_id,
@@ -253,7 +253,7 @@ AS SELECT  created_at AS interaction_created_at,
 -- techbd_udi_ingress.interaction_http_request_payload source
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_http_request_payload;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_http_request_payload
-AS SELECT sat_interaction_http_request_id,
+WITH (security_invoker = true) AS SELECT sat_interaction_http_request_id,
     hub_interaction_id as interaction_id,
     payload
    FROM techbd_udi_ingress.sat_interaction_http_request sihr;   
@@ -267,7 +267,7 @@ The result is sorted in descending order of interaction duration.
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_observe CASCADE;
 /* CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_observe
-AS 
+WITH (security_invoker = true) AS 
 SELECT *
 FROM (
     SELECT DISTINCT ON (intr_observe.interaction_id)
@@ -365,7 +365,7 @@ $$ LANGUAGE plpgsql;
  /*
 DROP VIEW IF EXISTS techbd_udi_ingress.orch_session_issue_classification CASCADE;
 CREATE OR REPLACE
-VIEW techbd_udi_ingress.orch_session_issue_classification as
+VIEW techbd_udi_ingress.orch_session_issue_classification WITH (security_invoker = true) AS
 WITH cte_business_rule AS (
 SELECT
 	worksheet AS worksheet,
@@ -422,7 +422,7 @@ WHERE
  * Comprehensive view of SFTP interactions and their associated requests. * 
  ******************************************************************************************/
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_sftp CASCADE;
-/* CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_sftp AS 
+/* CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_sftp WITH (security_invoker = true) AS 
 WITH issue_count AS (
 SELECT
 	osi.session_id,
@@ -499,7 +499,7 @@ interactions per tenant. Only the most recent interaction per tenant is retained
 *******************************************************************************************/
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_recent_fhir CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_recent_fhir AS
+CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_recent_fhir WITH (security_invoker = true) AS
   SELECT DISTINCT ON (tenant_id_lower)
     sihr.sat_interaction_fhir_request_id AS sat_interaction_http_request_id,
     sihr.hub_interaction_id AS interaction_id,
@@ -543,7 +543,7 @@ ORDER BY tenant_id_lower, sihr.created_at DESC;
 
 DROP VIEW IF EXISTS techbd_udi_ingress.fhir_submission_summary CASCADE;
 
-CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_submission_summary AS 
+CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_submission_summary WITH (security_invoker = true) AS 
    WITH submission_counts AS (
     SELECT  
         --NONE    -> ACCEPT_FHIR_BUNDLE
@@ -587,7 +587,7 @@ FROM
  ****************************************************************************************/
 
 DROP VIEW IF EXISTS techbd_udi_ingress.fhir_needs_attention CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_needs_attention AS  
+CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_needs_attention WITH (security_invoker = true) AS  
 WITH submission_counts AS (
          SELECT sihr.tenant_id_lower AS qe_name,
             count(
@@ -747,7 +747,7 @@ $procedure$
  
 DROP VIEW IF EXISTS techbd_udi_ingress.fhir_needs_attention_details CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_needs_attention_details
-AS select
+WITH (security_invoker = true) AS select
 	sihr.hub_interaction_id,
 	sihr.sat_interaction_fhir_request_id as sat_interaction_http_request_id,
 	sihr.tenant_id_lower as qe_name,
@@ -778,7 +778,7 @@ order by
  ****************************************************************************************/
 
 DROP VIEW IF EXISTS techbd_udi_ingress.fhir_needs_attention_dashbaord CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_needs_attention_dashbaord AS     
+CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_needs_attention_dashbaord WITH (security_invoker = true) AS     
 WITH combined_counts AS (
          SELECT sihr.tenant_id_lower AS qe_name,
             count(
@@ -902,7 +902,7 @@ DROP VIEW IF EXISTS techbd_udi_ingress.interaction_http_fhir_request_needs_atten
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_http_request_summary CASCADE; 
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_http_request_summary
-AS 
+WITH (security_invoker = true) AS 
 WITH cte AS (
     SELECT tenant_id_lower,
            client_ip_address,
@@ -974,7 +974,7 @@ ORDER BY tenant_id_lower, client_ip_address, user_agent;
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_http_request_summary_details CASCADE; 
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_http_request_summary_details
-AS 
+WITH (security_invoker = true) AS 
 WITH cte AS (
     SELECT tenant_id_lower,
            client_ip_address,
@@ -1215,7 +1215,7 @@ $function$
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_user_details CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_user_details
-AS SELECT created_at,
+WITH (security_invoker = true) AS SELECT created_at,
     hub_interaction_id,
     uri,
     sat_interaction_ui_user_id,
@@ -1240,7 +1240,7 @@ in descending order to prioritize recent sessions.
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_user_list CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_user_list
-AS SELECT min(created_at) AS created_at,
+WITH (security_invoker = true) AS SELECT min(created_at) AS created_at,
     min(user_id) AS user_id,
     min(user_name) AS user_name,
     min(user_role) AS user_role,    
@@ -1885,7 +1885,7 @@ $function$;
   This view provides a consolidated view of failed HTTP requests and associated interactions.
 ******************************************************************************************/
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_http_request_forward_failure;
-CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_http_request_forward_failure as
+CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_http_request_forward_failure WITH (security_invoker = true) AS
 SELECT DISTINCT ON (hub_interaction_id)
     sat_interaction_fhir_request_id,
     hub_interaction_id AS interaction_id,
@@ -3266,7 +3266,7 @@ $function$
 ;
 
 DROP VIEW IF EXISTS techbd_udi_ingress.fhir_tenant_stats_view  CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_tenant_stats_view  AS  
+CREATE OR REPLACE VIEW techbd_udi_ingress.fhir_tenant_stats_view  WITH (security_invoker = true) AS  
     SELECT 
         sihr.tenant_id_lower::text AS qe_name,  
         sihr.created_at::date,
@@ -3324,7 +3324,7 @@ ORDER BY
 
 
 drop view if exists techbd_udi_ingress.fhir_scn_submission cascade;
-create or replace view techbd_udi_ingress.fhir_scn_submission as  
+create or replace view techbd_udi_ingress.fhir_scn_submission WITH (security_invoker = true) AS  
  WITH submission_counts AS (
          SELECT sihr.organization_id AS organization_id,
             count(
@@ -3381,7 +3381,7 @@ create or replace view techbd_udi_ingress.fhir_scn_submission as
  ****************************************************************************************/
 
 drop view if exists techbd_udi_ingress.fhir_scn_submission_details cascade;
-create or replace view techbd_udi_ingress.fhir_scn_submission_details as  
+create or replace view techbd_udi_ingress.fhir_scn_submission_details WITH (security_invoker = true) AS  
   with submission_counts as (
 select
 	sihr.organization_id as organization_id,
@@ -3464,7 +3464,7 @@ order by
 
 
 drop view if exists techbd_udi_ingress.missing_datalake_submission_details cascade;
-create or replace view techbd_udi_ingress.missing_datalake_submission_details as
+create or replace view techbd_udi_ingress.missing_datalake_submission_details WITH (security_invoker = true) AS
  select
 	sihr.hub_interaction_id,
 	sihr.sat_interaction_fhir_request_id as sat_interaction_http_request_id,
@@ -3512,7 +3512,7 @@ order by
  ****************************************************************************************/
 
 DROP VIEW IF EXISTS techbd_udi_ingress.organization_interaction_summary CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.organization_interaction_summary AS 
+CREATE OR REPLACE VIEW techbd_udi_ingress.organization_interaction_summary WITH (security_invoker = true) AS 
 SELECT 
     organization_id,
     organization_name,
@@ -4462,7 +4462,7 @@ of throughput, success vs. failure, and data validation results.
 
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_csv_http CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_csv_http AS
+CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_csv_http WITH (security_invoker = true) AS
 SELECT 
     sizfr.tenant_id_lower,
     sizfr.tenant_name AS tenant_id,
@@ -4489,7 +4489,7 @@ interaction details, request attributes, and validation issues.
 ******************************************************************************************/
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_csv_http_fhir_request CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_csv_http_fhir_request
-AS SELECT DISTINCT ON (bundle_id)
+WITH (security_invoker = true) AS SELECT DISTINCT ON (bundle_id)
     hub_interaction_id AS interaction_id,
     uri,
     bundle_id,
@@ -4515,7 +4515,7 @@ ORDER BY bundle_id, created_at DESC;
 ******************************************************************************************/
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_csv_http_request_forward_failure;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_csv_http_request_forward_failure
-AS SELECT sat_interaction_fhir_request_id,
+WITH (security_invoker = true) AS SELECT sat_interaction_fhir_request_id,
     hub_interaction_id AS interaction_id,
     tenant_name AS tenant_id,
     uri,
@@ -4556,7 +4556,7 @@ it easier to identify failed uploads and investigate their root causes.
 
 DROP VIEW IF EXISTS techbd_udi_ingress.csv_file_not_processed_error_summary cascade;
 CREATE OR REPLACE view techbd_udi_ingress.csv_file_not_processed_error_summary
-AS 
+WITH (security_invoker = true) AS 
 SELECT
     scfpe.zip_file_hub_interaction_id,
     MIN(scfpe.created_at) AS created_at,
@@ -4591,7 +4591,7 @@ into each unprocessed file error, supporting debugging and root cause analysis.
 
 DROP VIEW IF EXISTS techbd_udi_ingress.csv_file_not_processed_error cascade;
 CREATE OR REPLACE view techbd_udi_ingress.csv_file_not_processed_error
-AS 
+WITH (security_invoker = true) AS 
 SELECT
     scfpe.created_at,
     scfpe.tenant_name AS tenant_id,
@@ -4629,7 +4629,7 @@ investigate problematic uploads.
 
 DROP VIEW IF EXISTS techbd_udi_ingress.csv_incomplete_groups_errors_summary cascade;
 CREATE OR REPLACE view techbd_udi_ingress.csv_incomplete_groups_errors_summary
-AS 
+WITH (security_invoker = true) AS 
 SELECT
     min(scfpe.tenant_name) as tenant_id,
     scfpe.zip_file_hub_interaction_id,
@@ -4662,7 +4662,7 @@ that failed due to incomplete or missing group data.
 
 DROP VIEW IF EXISTS techbd_udi_ingress.csv_incomplete_groups_errors cascade;
 CREATE OR REPLACE view techbd_udi_ingress.csv_incomplete_groups_errors
-AS 
+WITH (security_invoker = true) AS 
  select
 	scfpe.created_at,
 	scfpe.tenant_name AS tenant_id,
@@ -4698,7 +4698,7 @@ validation or integrity checks.
 
 DROP VIEW IF EXISTS techbd_udi_ingress.csv_data_integrity_error_summary cascade;
 CREATE OR REPLACE view techbd_udi_ingress.csv_data_integrity_error_summary 
-AS 
+WITH (security_invoker = true) AS 
 SELECT
     min(scfpe.tenant_name) as tenant_id,
     scfpe.zip_file_hub_interaction_id,
@@ -4724,7 +4724,7 @@ Results are grouped by key fields and sorted in ascending order.
 *****************************************/
    
  drop view if exists techbd_udi_ingress.hrsn_data_tracker cascade;  
- create or replace view techbd_udi_ingress.hrsn_data_tracker as  
+ create or replace view techbd_udi_ingress.hrsn_data_tracker WITH (security_invoker = true) AS  
  SELECT  
     htt_req.created_at::date AS interaction_date, 
     htt_req.tenant_name AS qe_name,  
@@ -4789,7 +4789,7 @@ Only the latest record per interaction is retained, and interactions are filtere
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_ccda_request CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_ccda_request
-AS 
+WITH (security_invoker = true) AS 
 WITH fhir_summary AS (
     SELECT
         hub_interaction_id,
@@ -4854,7 +4854,7 @@ Only the latest record per interaction is retained, and interactions are filtere
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_hl7v2_request CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_hl7v2_request
-AS 
+WITH (security_invoker = true) AS 
 SELECT
     sicr.sat_interaction_fhir_request_id AS sat_interaction_fhir_request_id,
     sicr.hub_interaction_id,
@@ -4887,7 +4887,7 @@ per tenant. Only the most recent interaction per tenant is retained.
 *******************************************************************************************/
 
  DROP VIEW IF EXISTS techbd_udi_ingress.interaction_recent_csv_https CASCADE;
- CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_recent_csv_https AS
+ CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_recent_csv_https WITH (security_invoker = true) AS
 	SELECT DISTINCT ON (sihr.tenant_id_lower)
 		sihr.sat_interaction_fhir_request_id AS sat_interaction_http_request_id,
 		sihr.hub_interaction_id AS interaction_id,
@@ -4916,7 +4916,7 @@ this new view definition to ensure consistency.
 
 drop view if exists techbd_udi_ingress.fhir_session_diagnostics cascade;
 create or replace view techbd_udi_ingress.fhir_session_diagnostics     
-as
+WITH (security_invoker = true) AS
 	select
 	created_at::date as encountered_date,
 	tenant_name AS tenant_id,
@@ -4958,7 +4958,7 @@ before creating the new view to ensure the latest definition is applied.
 
 drop view if exists techbd_udi_ingress.fhir_session_diagnostics_details cascade;
 create or replace view techbd_udi_ingress.fhir_session_diagnostics_details     
-as
+WITH (security_invoker = true) AS
 select
 	tenant_name AS tenant_id,
 	uri,
@@ -4985,7 +4985,7 @@ The view 'ref_code_lookup_system_view' provides a simplified lookup of all 'syst
 It aggregates data from the ref_code_lookup table by grouping on code_type, and generates a comma-separated string of system_values, ordered alphabetically.
 ******************************************************************************************/
 DROP VIEW IF EXISTS techbd_udi_ingress.ref_code_lookup_system_view CASCADE;
-CREATE VIEW techbd_udi_ingress.ref_code_lookup_system_view AS
+CREATE VIEW techbd_udi_ingress.ref_code_lookup_system_view WITH (security_invoker = true) AS
 SELECT 
     code_type,
     STRING_AGG(DISTINCT system_value, ', ' ORDER BY system_value) AS system_values
@@ -5257,7 +5257,7 @@ per tenant. Only the most recent interaction per tenant is retained.
 *******************************************************************************************/
 
  DROP VIEW IF EXISTS techbd_udi_ingress.interaction_recent_ccda_https CASCADE;
- CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_recent_ccda_https AS
+ CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_recent_ccda_https WITH (security_invoker = true) AS
  SELECT DISTINCT ON (sihr.tenant_id_lower)
     sihr.sat_interaction_fhir_request_id AS sat_interaction_http_request_id,
     sihr.hub_interaction_id AS interaction_id,
@@ -5276,7 +5276,7 @@ provide a consolidated view of CSV file interactions via HTTPS, including
 interaction details, tenant information, and associated file payloads.
 *******************************************************************************************/
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_csv_http_stat_file_data CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_csv_http_stat_file_data AS
+CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_csv_http_stat_file_data WITH (security_invoker = true) AS
 SELECT
     zip_file_hub_interaction_id,
     nature,
@@ -5751,7 +5751,7 @@ Each row in the view corresponds to a `code_type` (or one of the special categor
 
 DROP VIEW IF EXISTS techbd_udi_ingress.ref_code_lookup_code_view CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.ref_code_lookup_code_view
-AS
+WITH (security_invoker = true) AS
 SELECT code_type,
     json_agg(json_build_object('code', code, 
     						   'display', display_string,
@@ -7359,7 +7359,7 @@ validation result payload from the sat_interaction_zip_file_request table.
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_csv_http_validation_result CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_csv_http_validation_result
-AS SELECT hub_interaction_id,
+WITH (security_invoker = true) AS SELECT hub_interaction_id,
     sat_interaction_zip_file_request_id,
     validation_result_payload
    FROM techbd_udi_ingress.sat_interaction_zip_file_request sizfr;
@@ -7375,7 +7375,7 @@ AS SELECT hub_interaction_id,
  * CSV zip files associated with specific interaction IDs.
  ******************************************************************************************/
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_csv_zip_download CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_csv_zip_download AS
+CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_csv_zip_download WITH (security_invoker = true) AS
 SELECT
     hub_interaction_id,
     csv_zip_file_content
@@ -8087,7 +8087,7 @@ $$ LANGUAGE plpgsql;
 **/
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_ccda_https_request CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_ccda_https_request AS
+CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_ccda_https_request WITH (security_invoker = true) AS
 SELECT
     sicr.hub_interaction_id AS interaction_id,
 	sicr.sat_interaction_ccda_request_id,
@@ -8134,7 +8134,7 @@ interaction details, request attributes, and validation issues.
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_ccda_http_fhir_request CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_ccda_http_fhir_request
-AS SELECT hub_interaction_id AS interaction_id,
+WITH (security_invoker = true) AS SELECT hub_interaction_id AS interaction_id,
     uri,
     bundle_id,
     created_at AS interaction_created_at,
@@ -8184,7 +8184,7 @@ AS SELECT hub_interaction_id AS interaction_id,
 **/
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_hl7v2_https_request CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_hl7v2_https_request AS
+CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_hl7v2_https_request WITH (security_invoker = true) AS
 SELECT
     sicr.hub_interaction_id AS interaction_id,
 	sicr.sat_interaction_hl7_request_id,
@@ -8230,7 +8230,7 @@ interaction details, request attributes, and validation issues.
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_hl7v2_http_fhir_request CASCADE;
 CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_hl7v2_http_fhir_request
-AS SELECT hub_interaction_id AS interaction_id,
+WITH (security_invoker = true) AS SELECT hub_interaction_id AS interaction_id,
     uri,
     bundle_id,
     created_at AS interaction_created_at,
@@ -8278,7 +8278,7 @@ AS SELECT hub_interaction_id AS interaction_id,
 **/
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_ccda_payload CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_ccda_payload AS
+CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_ccda_payload WITH (security_invoker = true) AS
 select 
 sicr.hub_interaction_id,
 sicr.payload
@@ -8297,7 +8297,7 @@ WHERE
 */
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_ccda_validation_errors CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_ccda_validation_errors AS
+CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_ccda_validation_errors WITH (security_invoker = true) AS
 SELECT
     s.sat_ccda_validation_errors_id,
     s.hub_interaction_id,
@@ -8320,7 +8320,7 @@ where
 */
 
 DROP VIEW IF EXISTS techbd_udi_ingress.interaction_hl7v2_validation_errors CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_hl7v2_validation_errors AS
+CREATE OR REPLACE VIEW techbd_udi_ingress.interaction_hl7v2_validation_errors WITH (security_invoker = true) AS
 SELECT
     s.sat_hl7_validation_errors_id,
     s.hub_interaction_id,
@@ -8347,7 +8347,7 @@ where
 
 DROP VIEW IF EXISTS techbd_udi_ingress.csv_processing_errors_summary cascade;
 CREATE OR REPLACE view techbd_udi_ingress.csv_processing_errors_summary
-AS 
+WITH (security_invoker = true) AS 
 SELECT
     scfpe.zip_file_hub_interaction_id,
     MIN(scfpe.created_at) AS created_at,
@@ -8379,7 +8379,7 @@ GROUP BY
 
 DROP VIEW IF EXISTS techbd_udi_ingress.csv_processing_error cascade;
 CREATE OR REPLACE view techbd_udi_ingress.csv_processing_error
-AS 
+WITH (security_invoker = true) AS 
 SELECT
     scfpe.created_at,
     scfpe.tenant_name AS tenant_id,
@@ -8416,7 +8416,7 @@ ORDER BY
 
 DROP VIEW IF EXISTS techbd_udi_ingress.diagnostics_logs cascade;
 CREATE OR REPLACE view techbd_udi_ingress.diagnostics_logs
-AS 
+WITH (security_invoker = true) AS 
 select
  hub_interaction_id,
  tenant_name AS tenant_id,
@@ -8429,7 +8429,7 @@ where tenant_name is not null;
 
 DROP VIEW IF EXISTS techbd_udi_ingress.diagnostics_log_details cascade;
 CREATE OR REPLACE view techbd_udi_ingress.diagnostics_log_details
-AS 
+WITH (security_invoker = true) AS 
 select
  hub_interaction_id,
  tenant_name AS tenant_id,
@@ -8718,7 +8718,7 @@ $function$
 */
 
 DROP VIEW IF EXISTS techbd_udi_ingress.csv_all_processing_error_summary CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.csv_all_processing_error_summary AS
+CREATE OR REPLACE VIEW techbd_udi_ingress.csv_all_processing_error_summary WITH (security_invoker = true) AS
 SELECT
     scfpe.category,
     CASE scfpe.category
@@ -8753,7 +8753,7 @@ GROUP BY
 
 
 DROP VIEW IF EXISTS techbd_udi_ingress.csv_error_summary CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.csv_error_summary AS
+CREATE OR REPLACE VIEW techbd_udi_ingress.csv_error_summary WITH (security_invoker = true) AS
 SELECT 
     scfpe.zip_file_hub_interaction_id,
     MIN(scfpe.created_at) AS created_at,
@@ -9215,7 +9215,7 @@ AS $function$
 $function$;
 
 DROP VIEW IF EXISTS techbd_udi_ingress.active_json_action_rule  CASCADE;
-CREATE OR REPLACE VIEW techbd_udi_ingress.active_json_action_rule  AS  
+CREATE OR REPLACE VIEW techbd_udi_ingress.active_json_action_rule  WITH (security_invoker = true) AS  
     SELECT 
         jar.action_rule_id,
         jar.namespace,
