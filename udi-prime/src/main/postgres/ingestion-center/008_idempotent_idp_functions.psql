@@ -376,13 +376,14 @@ BEGIN
     INTO v_tenant_ids;
 
     SELECT EXISTS (
-        SELECT 1
-        FROM techbd_udi_ingress.idp_roles
-        WHERE lower(role_code)=ANY(string_to_array(v_user_roles,','))
-          AND is_admin
-          AND is_active
-    )
-    INTO v_is_admin;
+	    SELECT 1
+	    FROM techbd_udi_ingress.idp_roles r
+	    JOIN unnest(string_to_array(v_user_roles, ',')) AS ur(role_name)
+	      ON lower(trim(r.role_name)) = lower(trim(ur.role_name))
+	    WHERE r.is_admin
+	      AND r.is_active
+	)
+	INTO v_is_admin;
 
     PERFORM set_config('jwt.claims.user_roles',coalesce(v_user_roles,''),false);
     PERFORM set_config('jwt.claims.tenants',coalesce(v_tenant_ids,''),false);
