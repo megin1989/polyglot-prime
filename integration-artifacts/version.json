@@ -38,9 +38,9 @@
     {
       "type": "FLAT FILE",
       "channel": "FlatFileCsvBundle.xml",
-      "version": "0.9.29",
-      "editedby": "Nikhithaprojects9696",
-      "date": "2026-07-07"
+      "version": "0.9.30",
+      "editedby": "jewelbonnie",
+      "date": "2026-07-14"
     },
     {
       "type": "FLAT FILE",
@@ -108,9 +108,9 @@
     {
       "type": "Router",
       "channel": "RouterChannel.xml",
-      "version": "0.2.21",
+      "version": "0.2.22",
       "editedby": "jewelbonnie",
-      "date": "2026-07-03"
+      "date": "2026-07-14"
     },
   {
       "type": "code-templates",

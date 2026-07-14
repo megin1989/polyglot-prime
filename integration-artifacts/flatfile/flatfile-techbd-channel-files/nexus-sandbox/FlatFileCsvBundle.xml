@@ -2,10 +2,10 @@
   <id>00340250-ce9b-4d83-a27b-a49a7cb1fa1f</id>
   <nextMetaDataId>2</nextMetaDataId>
   <name>FlatFileCsvBundle</name>
-  <description>Version: 0.9.29
-Updated metadata handling to store all headers correctly.
-Defined severityLevel in the Source Transformer.</description>
-  <revision>32</revision>
+  <description>Version: 0.9.30
+Implemented Default Header Handling for FlatFile CSV Bundle
+</description>
+  <revision>39</revision>
   <sourceConnector version="26.3.1">
     <metaDataId>0</metaDataId>
     <name>sourceConnector</name>
@@ -208,7 +208,7 @@ if (headerDataLakeApiUrl &amp;&amp; String(headerDataLakeApiUrl).trim() !== &quo
    
    logger.info(&quot;DataLake API URL overridden from request header: &quot; + headerDataLakeApiUrl);
 }
-//////////////////////////////////////////////
+
 /********************************************
     2️⃣ FETCH TECHBD_BL_BASEURL from header
 ********************************************/
@@ -299,8 +299,7 @@ logger.info(&apos;[CHANNEL: &apos;+ channelName +&apos;  Lookup Manager Loader e
           <name>Validate HTTP Request and collect headers</name>
           <sequenceNumber>1</sequenceNumber>
           <enabled>true</enabled>
-          <script>///////////////////////////////////////////////////////////////////////////
-// Access the required header values using getHeader method
+          <script>// Access the required header values using getHeader method
 var incomingInteractionId = $(&apos;headers&apos;).getHeader(&apos;X-TechBD-Interaction-ID&apos;);
 var interactionId;
 
@@ -359,11 +358,26 @@ var customBaseFhirUrl = $(&apos;headers&apos;).getHeader(&apos;X-TechBD-Base-FHI
     if (validUrls.includes(customBaseFhirUrl)) {
     	
     channelMap.put(&apos;techBdBaseFhirUrl&apos;,customBaseFhirUrl);&#xd;    channelMap.put(&apos;baseFhirurl&apos;, customBaseFhirUrl);&#xd;  
-   } else {&#xd;   		logger.info(&quot;ERROR&quot;);
-			var errorMessage = &apos;The provided X-TechBD-Base-FHIR-URL is invalid. Base-FHIR-URL taken from the environment variable.&apos;;
-			logger.error(errorMessage);
-   }
-    }&#xd;
+   } else {
+    logger.info(&quot;ERROR&quot;);
+
+    var defaultBaseFhirUrl = LookupHelper.get(&quot;Config&quot;, &quot;BASE_FHIR_URL&quot;);
+
+    channelMap.put(&quot;techBdBaseFhirUrl&quot;, defaultBaseFhirUrl);
+    channelMap.put(&quot;baseFhirurl&quot;, defaultBaseFhirUrl);
+
+    logger.info(&quot;Invalid header. Using BASE_FHIR_URL from Lookup Manager: &quot; + defaultBaseFhirUrl);
+}
+    }&#xd;     else {
+
+    // Header not provided - use default from Lookup Manager
+    var defaultBaseFhirUrl = LookupHelper.get(&quot;Config&quot;, &quot;BASE_FHIR_URL&quot;);
+
+    channelMap.put(&quot;techBdBaseFhirUrl&quot;, defaultBaseFhirUrl);
+    channelMap.put(&quot;baseFhirurl&quot;, defaultBaseFhirUrl);
+
+    logger.info(&quot;Using BASE_FHIR_URL from Lookup Manager: &quot; + defaultBaseFhirUrl);
+}&#xd;
 &#xd;
 &#xd;    
 //Check the file type, only .zip is allowed
@@ -458,10 +472,7 @@ if (!fileContent || fileContent == &apos;&apos; || fileContent.trim().length ===
     setErrorResponse(400, errorMessage);
     throw errorMessage;
 }
-///////////////////////////////////////////////////////////////////////////
 
-
-///////////////////////////////////////////////////////////////////////////
 // Validate ZIP content - must contain at least one CSV file
 
 var ByteArrayInputStream = Packages.java.io.ByteArrayInputStream;
@@ -518,13 +529,11 @@ if (!hasCsvFile) {
     setErrorResponse(400, errorMessage);
     throw errorMessage;
 }
+ &#xd;var severityLevel = String(
+    $(&apos;headers&apos;).getHeader(&apos;X-TechBD-Validation-Severity-Level&apos;) || &quot;&quot;
+).trim() || &quot;error&quot;;
 
-
-var severityLevel =
-    String($(&apos;headers&apos;).getHeader(&apos;X-TechBD-Validation-Severity-Level&apos;) || &quot;&quot;).trim();
-
-channelMap.put(&quot;severityLevel&quot;, severityLevel || &quot;error&quot;);
-///////////////////////////////////////////////////////////////////////////</script>
+channelMap.put(&quot;severityLevel&quot;, severityLevel);</script>
         </com.mirth.connect.plugins.javascriptstep.JavaScriptStep>
         <com.mirth.connect.plugins.javascriptstep.JavaScriptStep version="26.3.1">
           <name>FHIR validation and submission</name>
@@ -852,16 +861,18 @@ post.setEntity(entity);
 
 channelMap.put(&apos;uri&apos;, sourceMap.get(&apos;uri&apos;));
 var uri = channelMap.get(&apos;uri&apos;) || &apos;/flatfile/csv/Bundle/&apos;;
+var severityLevel = String(
+    $(&apos;headers&apos;).getHeader(&apos;X-TechBD-Validation-Severity-Level&apos;) || &quot;&quot;
+).trim() || &quot;error&quot;;
 
-var severityLevel = String($(&apos;headers&apos;).getHeader(&apos;X-TechBD-Validation-Severity-Level&apos;) || &quot;&quot;).trim();
-//channelMap.put(&apos;SeverityLevel&apos;, severityLevel || &quot;error&quot;);
+channelMap.put(&quot;severityLevel&quot;, severityLevel);
 
 var dataLakeApiUrl = channelMap.get(&apos;DATALAKE_API_URL&apos;);
 var techbdBlBaseUrl = channelMap.get(&apos;techbdBlBaseUrl&apos;);
 var dataLedgerTracking = channelMap.get(&apos;DATA_LEDGER_TRACKING&apos;);
 var dataLedgerDiagnostics = channelMap.get(&apos;DATA_LEDGER_DIAGNOSTICS&apos;);
 var interactionId = channelMap.get(&apos;interactionId&apos;);
-//logger.info(&quot;**************************techbdBlBaseUrl from channelMap: &quot; + techbdBlBaseUrl);
+
 
 // --- Set required headers ---
 post.setHeader(new BasicHeader(&quot;Accept&quot;, &quot;application/fhir+json&quot;));
@@ -1069,24 +1080,24 @@ return;</undeployScript>
     <metadata>
       <enabled>true</enabled>
       <lastModified>
-        <time>1783345238339</time>
+        <time>1784010856237</time>
         <timezone>Asia/Calcutta</timezone>
       </lastModified>
       <pruningSettings>
         <archiveEnabled>true</archiveEnabled>
         <pruneErroredMessages>false</pruneErroredMessages>
       </pruningSettings>
-      <userId>11</userId>
+      <userId>10</userId>
     </metadata>
     <channelTags>
       <channelTag>
-        <id>6e1e8780-4772-4778-abe3-3d6c974c70b5</id>
-        <name>0_9_29</name>
+        <id>10fc2edd-5332-4f28-96b2-4aa769e6b067</id>
+        <name>0_9_30</name>
         <channelIds>
           <string>00340250-ce9b-4d83-a27b-a49a7cb1fa1f</string>
         </channelIds>
         <backgroundColor>
-          <red>255</red>
+          <red>128</red>
           <green>0</green>
           <blue>0</blue>
           <alpha>255</alpha>

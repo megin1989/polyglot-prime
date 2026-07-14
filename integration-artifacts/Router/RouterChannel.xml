@@ -2,9 +2,9 @@
   <id>576131f3-aa5b-4453-929f-1e07d7534e82</id>
   <nextMetaDataId>3</nextMetaDataId>
   <name>RouterChannel</name>
-  <description>Version: 0.2.21
-CORS configuration updates.</description>
-  <revision>23</revision>
+  <description>Version: 0.2.22
+Updated Router Channel to return the correct status code and message for missing client certificates.</description>
+  <revision>32</revision>
   <sourceConnector version="26.3.1">
     <metaDataId>0</metaDataId>
     <name>sourceConnector</name>
@@ -401,10 +401,31 @@ logger.info(&quot;Interaction-ID inside RouterChannel filter: &quot; + group2 + 
 
 var sourceType = $(&apos;headers&apos;).getHeader(&apos;X-TechBD-Source-Type&apos;);
 
-if(sourceType == &quot;CSV&quot;) { // TODO: Add a dedicated condition to handle the health check when the filter is enabled.
-	return true;
+if (sourceType == &quot;CSV&quot;) {
+    return true;
 } else {
-	return performCertValidation(&quot;chain&quot;, &quot;Util-sbx-bl-net.JKS&quot;, null);
+    var certResult = performCertValidation(&quot;chain&quot;, &quot;Util-sbx-bl-net.JKS&quot;, null);
+    if (!certResult) {
+        var certErrorOutcome = JSON.stringify({
+            resourceType: &quot;OperationOutcome&quot;,
+            issue: [{
+                severity: &quot;error&quot;,
+                code: &quot;security&quot;,
+                diagnostics: &quot;Client certificate is missing. A valid client certificate is required to access this endpoint.&quot;
+            }]
+        });
+        var certErrResp = new com.mirth.connect.userutil.Response(
+            com.mirth.connect.userutil.Status.ERROR,
+            new java.lang.String(certErrorOutcome)
+        );
+        responseMap.put(&apos;d1&apos;, certErrResp);              
+        responseMap.put(&apos;status&apos;, &apos;401&apos;);                 
+        responseMap.put(&apos;responseStatusCode&apos;, 401);
+        responseMap.put(&apos;responseContentType&apos;, &apos;application/fhir+json&apos;);
+        responseMap.put(&apos;responseBody&apos;, certErrorOutcome);
+        channelMap.put(&apos;certValidationFailed&apos;, true);
+    }
+    return certResult;
 }</script>
         </com.mirth.connect.plugins.javascriptrule.JavaScriptRule>
       </elements>
@@ -828,6 +849,15 @@ if (routerDirectResponse != null &amp;&amp; String(routerDirectResponse).trim() 
 }
 
 // =========================
+// CLIENT CERT VALIDATION FAILURE (set by source filter) 
+// =========================
+if (String(channelMap.get(&apos;certValidationFailed&apos;)) === &apos;true&apos;) {
+    logger.error(logPrefix + &apos;PostProcessor: cert validation failed upstream, returning 401 as-is&apos;);
+    return;
+}
+
+
+// =========================
 // mTLS DISABLED CHECK
 // =========================
 if (String(channelMap.get(&apos;mtlsFilterDisabled&apos;)) === &apos;true&apos;) {
@@ -860,6 +890,7 @@ logger.info(logPrefix + &apos;DEBUG#1 | destinationResponse exists: &apos; + (de
 // =========================
 // NO RESPONSE → 502
 // =========================
+
 if (!destinationResponse) {
 
     logger.error(logPrefix + &quot;PostProcessor: No response from destination&quot;);
@@ -1092,7 +1123,7 @@ return;</undeployScript>
     <metadata>
       <enabled>true</enabled>
       <lastModified>
-        <time>1783078871111</time>
+        <time>1784020301108</time>
         <timezone>Asia/Calcutta</timezone>
       </lastModified>
       <pruningSettings>
@@ -1103,14 +1134,15 @@ return;</undeployScript>
     </metadata>
     <channelTags>
       <channelTag>
-        <id>57b0b16b-abab-4a64-8e23-b95ad03841a3</id>
-        <name>0_2_21</name>
+        <id>b7286a5f-4b31-4b8e-a1b3-ca4afb9ff8c3</id>
+        <name>0_2_22</name>
         <channelIds>
+          <string>f439fc0f-5e1b-43ea-a8df-96bf220aa8d6</string>
           <string>576131f3-aa5b-4453-929f-1e07d7534e82</string>
         </channelIds>
         <backgroundColor>
-          <red>255</red>
-          <green>0</green>
+          <red>128</red>
+          <green>128</green>
           <blue>0</blue>
           <alpha>255</alpha>
         </backgroundColor>
