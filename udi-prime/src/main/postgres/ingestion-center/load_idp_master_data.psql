@@ -129,3 +129,23 @@ UPDATE techbd_udi_ingress.idp_screens SET description = 'OpenAPI UI screen' WHER
 DELETE FROM techbd_udi_ingress.idp_screens WHERE scr_code = 'scr_Perfomance_overview';
 
 UPDATE techbd_udi_ingress.tenants SET tenant_short_code = tenant_name WHERE tenant_type = 'QE';
+
+-- Step 2: Grant config access to Super Admin
+UPDATE techbd_udi_ingress.idp_roles
+SET config_access = TRUE
+WHERE role_code = 'rl_super_admin';
+ 
+-- Step 3: Grant is_admin to nyec admin
+UPDATE techbd_udi_ingress.idp_roles
+SET is_admin = TRUE
+WHERE role_code = 'rl_nyec_admin';
+
+INSERT INTO techbd_udi_ingress.idp_screens
+(scr_code, scr_name, description, scr_type, scr_group, mnu_id, order_no, is_active, provenance, created_by)
+VALUES 
+('scr_Roles', 'Roles', 'Roles configuration screen', 'page', 'config', 7, 2, TRUE, 'Hub UI', CURRENT_USER)
+ON CONFLICT (scr_code) DO NOTHING;
+
+UPDATE techbd_udi_ingress.idp_menu
+SET mnu_group = 'config'
+WHERE mnu_code  = 'mnu_Settings';
