@@ -2,9 +2,9 @@
   <id>576131f3-aa5b-4453-929f-1e07d7534e82</id>
   <nextMetaDataId>3</nextMetaDataId>
   <name>RouterChannel</name>
-  <description>Version: 0.2.22
-Updated Router Channel to return the correct status code and message for missing client certificates.</description>
-  <revision>32</revision>
+  <description>Version: 0.2.24
+Implemented a cross-browser CORS fix to ensure seamless API access and Swagger compatibility across Chrome, Edge, and Firefox.</description>
+  <revision>36</revision>
   <sourceConnector version="26.3.1">
     <metaDataId>0</metaDataId>
     <name>sourceConnector</name>
@@ -696,26 +696,32 @@ interactionId = channelMap.get(&quot;interactionId&quot;);
 var logPrefix = &quot;[INTERACTION ID: &quot; + interactionId + &quot;] &quot;;
 
 // ======================================================
-// PARSE HEADERS STRING + FORWARD
+// PARSE HEADERS + FORWARD
 // ======================================================
 var headersMap = new java.util.HashMap();
 var headers = $(&apos;headers&apos;);
-logger.info(logPrefix + &quot;HEADERS OBJECT: &quot; + $(&apos;headers&apos;));
+logger.info(logPrefix + &quot;HEADERS OBJECT: &quot; + headers);
+
+//sec-ch-ua / sec-ch-ua-mobile / sec-ch-ua-platform values contain
+// embedded quotes and commas 
 if (headers != null) {
     var headerStr = String(headers);  // Convert full object to string
+
+    headerStr = headerStr.replace(/(^|, )(sec-ch-ua(-mobile|-platform)?)=\[.*?\](?=(, |$))/g, &apos;&apos;);
+    headerStr = headerStr.replace(/^, /, &apos;&apos;); // clean up if the removed segment was first in the map
+
     // Remove { and }
     headerStr = headerStr.replace(/^\{|\}$/g, &apos;&apos;);
     var pairs = headerStr.split(&apos;, &apos;);
-    for (var i = 0; i &lt; pairs.length; i++) {&#xd;&#xd;    var idx = pairs[i].indexOf(&apos;=&apos;);
-    if (idx &gt; 0) {
-
-        var key = pairs[i].substring(0, idx).trim();
-        var value = pairs[i].substring(idx + 1).trim();&#xd;
+    for (var i = 0; i &lt; pairs.length; i++) {
+        var idx = pairs[i].indexOf(&apos;=&apos;);
+        if (idx &gt; 0) {
+            var key = pairs[i].substring(0, idx).trim();
+            var value = pairs[i].substring(idx + 1).trim();
             // Remove [ ]
             var headerValue = value.replace(/^\[|\]$/g, &apos;&apos;);
 
             if (headerValue !== &apos;&apos; &amp;&amp; key.toLowerCase() !== &apos;content-length&apos;) {
-               // logger.info(&quot;INCOMING HEADER: &quot; + key + &quot; = &quot; + headerValue);
                 headersMap.put(key, headerValue);
             }
         }
@@ -1123,7 +1129,7 @@ return;</undeployScript>
     <metadata>
       <enabled>true</enabled>
       <lastModified>
-        <time>1784020301108</time>
+        <time>1784177583033</time>
         <timezone>Asia/Calcutta</timezone>
       </lastModified>
       <pruningSettings>
@@ -1134,15 +1140,14 @@ return;</undeployScript>
     </metadata>
     <channelTags>
       <channelTag>
-        <id>b7286a5f-4b31-4b8e-a1b3-ca4afb9ff8c3</id>
-        <name>0_2_22</name>
+        <id>3a124cef-0806-4420-8563-370ada768ac6</id>
+        <name>0_2_24</name>
         <channelIds>
-          <string>f439fc0f-5e1b-43ea-a8df-96bf220aa8d6</string>
           <string>576131f3-aa5b-4453-929f-1e07d7534e82</string>
         </channelIds>
         <backgroundColor>
-          <red>128</red>
-          <green>128</green>
+          <red>255</red>
+          <green>0</green>
           <blue>0</blue>
           <alpha>255</alpha>
         </backgroundColor>

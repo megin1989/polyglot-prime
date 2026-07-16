@@ -108,9 +108,9 @@
     {
       "type": "Router",
       "channel": "RouterChannel.xml",
-      "version": "0.2.22",
+      "version": "0.2.24",
       "editedby": "jewelbonnie",
-      "date": "2026-07-14"
+      "date": "2026-07-16"
     },
   {
       "type": "code-templates",
