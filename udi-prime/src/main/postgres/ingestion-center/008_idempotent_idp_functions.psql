@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION techbd_udi_ingress.idp_get_role_menus_with_permission
 AS $function$
 DECLARE 
     result json;
-    is_role_exist bool;
+    is_role_exist bool; 
 BEGIN
     IF in_role_id IS NULL 
     THEN
@@ -31,25 +31,37 @@ BEGIN
         );
         RETURN result;
     END IF;
+ 
 
-    WITH all_menu_screens_permissions AS (
-    SELECT
-        mnu.mnu_id,
-        mnu.mnu_code,
-        mnu.mnu_name,
-        sc.scr_id,
-        sc.scr_code,
-        sc.scr_name,
-        CASE WHEN rtpn.role_id IS NOT NULL THEN TRUE ELSE FALSE END AS has_permission
-    FROM techbd_udi_ingress.idp_screens sc
-    JOIN techbd_udi_ingress.idp_menu mnu
-        ON sc.mnu_id = mnu.mnu_id
-    LEFT JOIN techbd_udi_ingress.idp_role_tenant_permission rtpn
-        ON rtpn.mnu_id = mnu.mnu_id
-            AND rtpn.scr_id = sc.scr_id
-            AND rtpn.role_id = in_role_id
-    ORDER BY mnu.order_no ASC 
+WITH all_menu_screens_permissions AS (
+SELECT
+    mnu.mnu_id,
+    mnu.mnu_code,
+    mnu.mnu_name,
+    sc.scr_id,
+    sc.scr_code,
+    sc.scr_name,
+    sc.scr_type,
+    CASE
+        WHEN rtpn.role_id IS NOT NULL THEN TRUE
+        ELSE FALSE
+    END AS has_permission
+FROM techbd_udi_ingress.idp_screens sc
+JOIN techbd_udi_ingress.idp_menu mnu
+    ON sc.mnu_id = mnu.mnu_id
+LEFT JOIN techbd_udi_ingress.idp_role_tenant_permission rtpn
+    ON rtpn.mnu_id = mnu.mnu_id
+   AND rtpn.scr_id = sc.scr_id
+   AND rtpn.role_id = in_role_id
+WHERE
+    (
+        sc.scr_group = 'data'
+        AND mnu.mnu_group = 'data'
     )
+ORDER BY
+    mnu.order_no,
+    sc.order_no
+)
     
     SELECT jsonb_build_object(
             'status', 'success',
@@ -72,6 +84,8 @@ AS $function$
 DECLARE 
     result jsonb;
     is_role_exist bool;
+    is_admin_role bool;
+    has_config_access bool;
 BEGIN
     IF in_role_name IS NULL 
     THEN
@@ -98,27 +112,69 @@ BEGIN
         RETURN result;
     END IF;
 
-    WITH login_role_permissions AS (
-        SELECT
-            mnu.mnu_name,
-            sc.scr_name
-        FROM techbd_udi_ingress.idp_screens sc
-        JOIN techbd_udi_ingress.idp_menu mnu
-            ON sc.mnu_id = mnu.mnu_id
-        LEFT JOIN techbd_udi_ingress.idp_role_tenant_permission rtpn
-            ON rtpn.mnu_id = mnu.mnu_id
-               AND rtpn.scr_id = sc.scr_id
-        JOIN techbd_udi_ingress.idp_roles rl 
-            ON rl.role_id = rtpn.role_id 
-        WHERE rl.role_name = in_role_name
-    ),
-    screens_grouped AS (
-        SELECT 
-            mnu_name,
-            jsonb_agg(DISTINCT scr_name ORDER BY scr_name) AS screens
-        FROM login_role_permissions
-        GROUP BY mnu_name
-    )
+	-- Get is_admin and config_access
+	SELECT
+	    is_admin,
+	    config_access
+	INTO
+	    is_admin_role,
+	    has_config_access
+	FROM techbd_udi_ingress.idp_roles
+	WHERE role_name = in_role_name;
+
+
+WITH login_role_permissions AS (
+    -- 1. Super Admin -> All menus & screens
+    SELECT
+        mnu.mnu_name,
+        sc.scr_name
+    FROM techbd_udi_ingress.idp_screens sc
+    JOIN techbd_udi_ingress.idp_menu mnu
+        ON sc.mnu_id = mnu.mnu_id
+    WHERE
+        is_admin_role = TRUE
+        AND has_config_access = TRUE
+
+    UNION ALL
+
+    -- 2. Admin -> All Data menus & screens
+    SELECT
+        mnu.mnu_name,
+        sc.scr_name
+    FROM techbd_udi_ingress.idp_screens sc
+    JOIN techbd_udi_ingress.idp_menu mnu
+        ON sc.mnu_id = mnu.mnu_id
+    WHERE
+        is_admin_role = TRUE
+        AND has_config_access = FALSE
+        AND sc.scr_group = 'data'
+        AND mnu.mnu_group = 'data'
+
+    UNION ALL
+
+    -- 3. Other Roles -> Assigned permissions only
+    SELECT
+        mnu.mnu_name,
+        sc.scr_name
+    FROM techbd_udi_ingress.idp_role_tenant_permission rtpn
+    JOIN techbd_udi_ingress.idp_screens sc
+        ON sc.scr_id = rtpn.scr_id
+    JOIN techbd_udi_ingress.idp_menu mnu
+        ON mnu.mnu_id = rtpn.mnu_id
+    JOIN techbd_udi_ingress.idp_roles rl
+        ON rl.role_id = rtpn.role_id
+    WHERE
+        is_admin_role = FALSE
+        AND has_config_access = FALSE
+        AND rl.role_name = in_role_name
+),
+screens_grouped AS (
+    SELECT
+        mnu_name,
+        jsonb_agg(DISTINCT scr_name ORDER BY scr_name) AS screens
+    FROM login_role_permissions
+    GROUP BY mnu_name
+)
     SELECT jsonb_object_agg(mnu_name, screens)
     INTO result
     FROM screens_grouped;
@@ -127,6 +183,7 @@ BEGIN
 
 END;
 $function$;
+
 
 /* Menu polulation */
 DROP FUNCTION IF EXISTS techbd_udi_ingress.idp_insert_role_menus_with_permissions(int, jsonb, timestamp, text);
@@ -408,3 +465,22 @@ ORDER BY tenant_name ASC;
 END;
 $function$
 ;
+
+
+DROP FUNCTION IF EXISTS techbd_udi_ingress.set_admin_context_for_github_login(text);
+CREATE OR REPLACE FUNCTION techbd_udi_ingress.set_admin_context_for_github_login(
+    p_auth_provider text
+)
+RETURNS text
+LANGUAGE plpgsql
+AS $function$
+BEGIN
+    IF lower(p_auth_provider) = 'github' THEN
+        PERFORM set_config('jwt.claims.is_admin', 'true', false);
+    ELSE
+        RAISE EXCEPTION 'Unsupported authentication provider: %', p_auth_provider;
+    END IF;
+
+    RETURN 'SUCCESS';
+END;
+$function$;

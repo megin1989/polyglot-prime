@@ -1829,6 +1829,17 @@ const migrateSP = pgSQLa.storedProcedure(
               ALTER TABLE techbd_udi_ingress.idp_roles
               ADD CONSTRAINT idp_roles_pkey PRIMARY KEY (role_id);
           END IF;
+
+          IF NOT EXISTS (
+              SELECT 1
+              FROM information_schema.columns
+              WHERE table_schema = 'techbd_udi_ingress'
+                AND table_name = 'idp_roles'
+                AND column_name = 'config_access'
+          ) THEN
+              ALTER TABLE techbd_udi_ingress.idp_roles
+              ADD COLUMN config_access BOOLEAN NOT NULL DEFAULT FALSE;
+          END IF;
       
       ${idpMenu}
           IF NOT EXISTS (
@@ -1839,6 +1850,17 @@ const migrateSP = pgSQLa.storedProcedure(
               ALTER TABLE techbd_udi_ingress.idp_menu
               ADD CONSTRAINT idp_menu_pkey PRIMARY KEY (mnu_id);
           END IF;
+
+          IF NOT EXISTS (
+              SELECT 1
+              FROM information_schema.columns
+              WHERE table_schema = 'techbd_udi_ingress'
+                AND table_name = 'idp_menu'
+                AND column_name = 'mnu_group'
+          ) THEN
+              ALTER TABLE techbd_udi_ingress.idp_menu
+              ADD COLUMN mnu_group TEXT NOT NULL DEFAULT 'data';
+          END IF;          
       
       ${idpScreens}
           IF NOT EXISTS (
@@ -1849,6 +1871,17 @@ const migrateSP = pgSQLa.storedProcedure(
               ALTER TABLE techbd_udi_ingress.idp_screens
               ADD CONSTRAINT idp_screens_pkey PRIMARY KEY (scr_id);
           END IF;
+
+          IF NOT EXISTS (
+              SELECT 1
+              FROM information_schema.columns
+              WHERE table_schema = 'techbd_udi_ingress'
+                AND table_name = 'idp_screens'
+                AND column_name = 'scr_group'
+          ) THEN
+              ALTER TABLE techbd_udi_ingress.idp_screens
+              ADD COLUMN scr_group TEXT NOT NULL DEFAULT 'data';
+          END IF;          
 
       ${idpRoleTenantPermission}
           IF NOT EXISTS (
