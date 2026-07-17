@@ -281,16 +281,15 @@
                       </xsl:choose>"
         </xsl:if>
         <!-- List all addresses -->
-        <!-- <xsl:if test="ccda:addr[not(@nullFlavor)]">
+        <xsl:if test="ccda:addr[not(@nullFlavor)]">
             <xsl:call-template name="build-address-array">
               <xsl:with-param name="addresses" select="ccda:addr[not(@nullFlavor)]"/>
               <xsl:with-param name="resource_name" select="'Patient'"/>
             </xsl:call-template>
-        </xsl:if> -->
+        </xsl:if>
 
         <!-- List the first address that has a valid postal code. If there is no valid postal code then use first valid address. IG 1.9.2 -->        
-        <xsl:choose>
-            <!-- First preference: first address with a valid postal code -->
+        <!-- <xsl:choose>
             <xsl:when test="ccda:addr[
                                 not(@nullFlavor)
                                 and ccda:postalCode[
@@ -312,7 +311,6 @@
                 </xsl:call-template>
             </xsl:when>
 
-            <!-- Fallback: first valid address -->
             <xsl:when test="ccda:addr[not(@nullFlavor)]">
                 <xsl:call-template name="build-address-array">
                     <xsl:with-param
@@ -321,7 +319,7 @@
                     <xsl:with-param name="resource_name" select="'Patient'"/>
                 </xsl:call-template>
             </xsl:when>
-        </xsl:choose>
+        </xsl:choose> -->
 
         <xsl:if test="ccda:telecom[not(@nullFlavor)]">
             , "telecom": [
@@ -984,16 +982,15 @@
             ]
         </xsl:if>
         <!-- List all addresses -->
-        <!-- <xsl:if test="ccda:assignedAuthor/ccda:representedOrganization/ccda:addr[not(@nullFlavor)]">
+        <xsl:if test="ccda:assignedAuthor/ccda:representedOrganization/ccda:addr[not(@nullFlavor)]">
             <xsl:call-template name="build-address-array">
               <xsl:with-param name="addresses" select="ccda:assignedAuthor/ccda:representedOrganization/ccda:addr[not(@nullFlavor)]"/>
               <xsl:with-param name="resource_name" select="'Organization'"/>
             </xsl:call-template>
-        </xsl:if> -->
+        </xsl:if>
 
         <!-- List the first address that has a valid postal code. If there is no valid postal code then use first valid address. IG 1.9.2 -->        
-        <xsl:choose>
-            <!-- First preference: first address with a valid postal code -->
+        <!-- <xsl:choose>
             <xsl:when test="ccda:assignedAuthor/ccda:representedOrganization/ccda:addr[
                                 not(@nullFlavor)
                                 and ccda:postalCode[
@@ -1015,7 +1012,6 @@
                 </xsl:call-template>
             </xsl:when>
 
-            <!-- Fallback: first valid address -->
             <xsl:when test="ccda:assignedAuthor/ccda:representedOrganization/ccda:addr[not(@nullFlavor)]">
                 <xsl:call-template name="build-address-array">
                     <xsl:with-param
@@ -1024,7 +1020,7 @@
                     <xsl:with-param name="resource_name" select="'Organization'"/>
                 </xsl:call-template>
             </xsl:when>
-        </xsl:choose>
+        </xsl:choose> -->
       },
       "request" : {
         "method" : "POST",
@@ -1424,7 +1420,8 @@
                               </xsl:for-each>
                             ],
                           </xsl:if>
-                      </xsl:when>
+                      </xsl:when>    
+                      <!-- <xsl:otherwise> -->
                       <xsl:when test="string(ccda:observation/ccda:value/@code) != 'UNK' and string-length(ccda:observation/ccda:value/@code) > 0">
                           "valueCodeableConcept" : {
                             "coding": [{
@@ -1442,6 +1439,7 @@
                             </xsl:choose>
                           },
                       </xsl:when>
+                      <!-- </xsl:otherwise> -->
                 </xsl:choose>
                 "subject": {
                   "reference": "Patient/<xsl:value-of select='$patientResourceId'/>",
