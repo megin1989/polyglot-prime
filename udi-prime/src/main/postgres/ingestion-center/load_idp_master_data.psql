@@ -149,3 +149,11 @@ ON CONFLICT (scr_code) DO NOTHING;
 UPDATE techbd_udi_ingress.idp_menu
 SET mnu_group = 'config'
 WHERE mnu_code  = 'mnu_Settings';
+
+UPDATE techbd_udi_ingress.idp_screens
+SET scr_name = 'Role Access Management'
+WHERE scr_code = 'scr_Roles';
+
+UPDATE techbd_udi_ingress.idp_screens
+SET scr_name = 'FHIR Failed Submissions (Data Lake)'
+WHERE scr_code = 'scr_FHIR_via_HTTPS_FAILED';
