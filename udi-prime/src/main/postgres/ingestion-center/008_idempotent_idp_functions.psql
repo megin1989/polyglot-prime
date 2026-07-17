@@ -423,7 +423,7 @@ BEGIN
             WHERE lower(t.tenant_name) IN (
                 SELECT lower(value)
                 FROM jsonb_array_elements_text(
-                    COALESCE(token->'groupNames','[]'::jsonb)
+                    COALESCE(token->'tenantNames','[]'::jsonb)
                 ) value
             )
             AND t.is_active
