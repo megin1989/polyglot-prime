@@ -307,7 +307,7 @@
 
         <!-- ================= ADDRESS ================= -->        
         <!-- List all addresses -->
-        <!-- <xsl:variable name="validAddresses"
+        <xsl:variable name="validAddresses"
             select="//PID.11[
                 normalize-space(PID.11.1) or
                 normalize-space(PID.11.2) or
@@ -327,17 +327,15 @@
               </xsl:call-template>
             </xsl:for-each>
           ]
-        </xsl:if> -->
+        </xsl:if>
 
         <!-- List the first address that has a valid postal code. If there is no valid postal code then use first valid address. IG 1.9.2 -->        
-        <xsl:variable name="addressNode">
+        <!-- <xsl:variable name="addressNode">
             <xsl:choose>
-                <!-- First address having a valid ZIP/Postal Code -->
                 <xsl:when test="//PID.11[normalize-space(PID.11.5)]">
                     <xsl:copy-of select="//PID.11[normalize-space(PID.11.5)][1]"/>
                 </xsl:when>
 
-                <!-- Otherwise first valid address -->
                 <xsl:when test="//PID.11[
                                     normalize-space(PID.11.1) or
                                     normalize-space(PID.11.2) or
@@ -367,7 +365,7 @@
                     <xsl:with-param name="resource_name" select="'Patient'"/>
                 </xsl:call-template>
             ]
-        </xsl:if>
+        </xsl:if> -->
 
         <!-- ================= TELECOM ================= -->
         <xsl:if test="//PID.13[normalize-space(PID.13.1)] or //PID.14[normalize-space(PID.14.1)] or //PID.40[normalize-space(PID.40.1)]">
@@ -1341,7 +1339,7 @@
         </xsl:if>
         
         <!-- List all addresses -->
-        <!-- <xsl:variable name="validAddresses"
+        <xsl:variable name="validAddresses"
             select="//ORC.22[
                 normalize-space(ORC.22.1) or
                 normalize-space(ORC.22.2) or
@@ -1361,17 +1359,15 @@
               </xsl:call-template>
             </xsl:for-each>
           ]
-        </xsl:if> -->
+        </xsl:if>
 
         <!-- List the first address that has a valid postal code. If there is no valid postal code then use first valid address. IG 1.9.2 -->        
-        <xsl:variable name="addressNode">
+        <!-- <xsl:variable name="addressNode">
             <xsl:choose>
-                <!-- First address having a valid ZIP/Postal Code -->
                 <xsl:when test="//ORC.22[normalize-space(ORC.22.5)]">
                     <xsl:copy-of select="//ORC.22[normalize-space(ORC.22.5)][1]"/>
                 </xsl:when>
 
-                <!-- Otherwise first valid address -->
                 <xsl:when test="//ORC.22[
                                     normalize-space(ORC.22.1) or
                                     normalize-space(ORC.22.2) or
@@ -1401,7 +1397,7 @@
                     <xsl:with-param name="resource_name" select="'Organization'"/>
                 </xsl:call-template>
             ]
-        </xsl:if>
+        </xsl:if> -->
   
       },
       "request" : {
