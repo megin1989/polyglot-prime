@@ -781,6 +781,7 @@ const tenant = SQLa.tableDefinition("tenants", {
     tenant_type:textNullable().default("QE"),
     tenant_short_code:textNullable(),
     elaboration:jsonbNullable(),
+    description:textNullable(),
     ...dvts.housekeeping.columns
   }, {
   isIdempotent: true,
@@ -1763,6 +1764,16 @@ const migrateSP = pgSQLa.storedProcedure(
                 AND column_name = 'elaboration'
       ) THEN
             ALTER TABLE techbd_udi_ingress.tenants ADD COLUMN IF NOT EXISTS elaboration jsonb;
+      END IF;
+
+      IF NOT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'techbd_udi_ingress'
+                AND table_name = 'tenants'
+                AND column_name = 'description'
+      ) THEN
+            ALTER TABLE techbd_udi_ingress.tenants ADD COLUMN IF NOT EXISTS description TEXT;
       END IF;
 
       ${userSessions}

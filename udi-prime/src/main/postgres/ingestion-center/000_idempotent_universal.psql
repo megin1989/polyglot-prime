@@ -189,12 +189,14 @@ BEGIN
           tenant_id,
           tenant_name,
           tenant_displayname,
+          tenant_short_code,
 		  fusion_auth_group_id,
           provenance,
           created_at,
           created_by
       ) VALUES (
           v_tenant_id,
+          LOWER(p_tenant_name),
           LOWER(p_tenant_name),
           LOWER(p_tenant_name),
 		  NULL,
