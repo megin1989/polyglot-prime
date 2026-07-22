@@ -17,9 +17,51 @@ class PermissionsPage {
     bindEvents() {
         document.addEventListener('change', e => {
             if (e.target.classList.contains('screen-checkbox')) {
-                this.updateSelectedCount();
+                this.handleScreenCheckboxChange(e.target);
             }
         });
+    }
+
+    handleScreenCheckboxChange(checkbox) {
+        this.applySelectionState(checkbox, checkbox.checked);
+        this.updateSelectedCount();
+    }
+
+    applySelectionState(checkbox, checked) {
+        checkbox.checked = checked;
+
+        const parentItem = checkbox.closest('.screen-tree-item');
+        if (!parentItem) return;
+
+        const descendants = Array.from(parentItem.querySelectorAll('.screen-checkbox'));
+        descendants.forEach(item => {
+            if (item !== checkbox) {
+                item.checked = checked;
+            }
+        });
+
+        this.updateParentState(checkbox);
+    }
+
+    updateParentState(checkbox) {
+        let currentCheckbox = this.findParentCheckbox(checkbox);
+
+        while (currentCheckbox) {
+            const parentItem = currentCheckbox.closest('.screen-tree-item');
+            if (!parentItem) break;
+
+            const childCheckboxes = Array.from(parentItem.querySelectorAll('.screen-checkbox'))
+                .filter(item => item !== currentCheckbox);
+            currentCheckbox.checked = childCheckboxes.some(item => item.checked);
+            currentCheckbox = this.findParentCheckbox(currentCheckbox);
+        }
+    }
+
+    findParentCheckbox(checkbox) {
+        const parentScreenId = checkbox.dataset.parentScreenId;
+        if (!parentScreenId) return null;
+
+        return document.querySelector(`.screen-checkbox[data-screen-id="${parentScreenId}"]`);
     }
 
     updateRoleDescription() {
@@ -100,8 +142,25 @@ class PermissionsPage {
 
     groupMenus(data) {
         const menuMap = {};
+        const screensById = new Map();
 
         data.menu_screens.forEach(item => {
+            const screen = {
+                scr_id: item.scr_id,
+                scr_name: item.scr_name,
+                scr_code: item.scr_code,
+                parent_scr_id: item.parent_scr_id,
+                mnu_id: item.mnu_id,
+                has_permission: item.has_permission,
+                children: []
+            };
+            screensById.set(screen.scr_id, screen);
+        });
+
+        data.menu_screens.forEach(item => {
+            const screen = screensById.get(item.scr_id);
+            if (!screen) return;
+
             if (!menuMap[item.mnu_id]) {
                 menuMap[item.mnu_id] = {
                     mnu_id: item.mnu_id,
@@ -111,40 +170,70 @@ class PermissionsPage {
                 };
             }
 
-            menuMap[item.mnu_id].screens.push({
-                scr_id: item.scr_id,
-                scr_name: item.scr_name,
-                scr_code: item.scr_code,
-                has_permission: item.has_permission
-            });
+            const parentScrId = item.parent_scr_id;
+            if (parentScrId && screensById.has(parentScrId)) {
+                const parentScreen = screensById.get(parentScrId);
+                if (parentScreen) {
+                    parentScreen.children.push(screen);
+                }
+            } else {
+                menuMap[item.mnu_id].screens.push(screen);
+            }
         });
 
         return Object.values(menuMap);
     }
 
+    renderScreenTree(screens, depth = 0, forceChecked = false) {
+        return screens.map(screen => {
+            const childrenHtml = screen.children && screen.children.length
+                ? this.renderScreenTree(screen.children, depth + 1)
+                : "";
+            const indentStyle = depth > 0 ? `style="margin-left: ${depth * 16}px;"` : "";
+
+            return `
+                <div class="screen-tree-item">
+                    <div class="screen-item" ${indentStyle}>
+                        <input
+                            type="checkbox"
+                            class="screen-checkbox"
+                            data-screen-id="${screen.scr_id}"
+                            data-menu-id="${screen.mnu_id}"
+                            data-parent-screen-id="${screen.parent_scr_id || ''}"
+                            ${screen.has_permission || forceChecked ? 'checked' : ''}
+                            ${forceChecked ? 'disabled' : ''}>
+                        ${screen.scr_name}
+                    </div>
+                    ${childrenHtml}
+                </div>
+            `;
+        }).join('');
+    }
+
     renderMenus(data) {
         const menus = this.groupMenus(data);
         const container = document.getElementById("menuContainer");
-        if (!container) return;
+        if (!container) return; 
 
         container.innerHTML = "";
 
         menus.forEach(menu => {
-            const totalScreens = menu.screens.length;
-            const selectedScreens = menu.screens.filter(x => x.has_permission).length;
-            const screensHtml = menu.screens.map(screen => `
-                <div class="screen-item">
-                    <input type="checkbox" class="screen-checkbox" data-screen-id="${screen.scr_id}" data-menu-id="${menu.mnu_id}" ${screen.has_permission ? 'checked' : ''}>
-                    ${screen.scr_name}
-                </div>
-            `).join('');
+            const isDashboardMenu = menu.mnu_code === "mnu_dashboard";
+            const totalScreens = menu.screens.reduce((count, screen) => count + 1 + (screen.children ? screen.children.length : 0), 0);
+            const selectedScreens = menu.screens.reduce((count, screen) => {
+                const screenCount = (screen.has_permission ? 1 : 0) + (screen.children ? screen.children.filter(child => child.has_permission).length : 0);
+                return count + screenCount;
+            }, 0); 
+            const screensHtml = this.renderScreenTree(menu.screens, 0, isDashboardMenu);
 
             container.insertAdjacentHTML('beforeend', `
                 <div class="menu-card">
                     <div class="menu-header" onclick="toggleMenu(this, event)">
                         <div class="menu-left">
                             <div class="toggle-area">
-                                <input type="checkbox" onchange="toggleGroup(this)">
+                                <input type="checkbox"
+                               onchange="toggleGroup(this)"
+                               ${isDashboardMenu ? "checked disabled" : ""}>
                             </div>
                             <span class="menu-name">
                                 ${menu.mnu_name}
@@ -260,7 +349,7 @@ class PermissionsPage {
 
         const children = body.querySelectorAll('.screen-checkbox');
         children.forEach(c => {
-            c.checked = checkbox.checked;
+            this.applySelectionState(c, checkbox.checked);
         });
 
         this.updateSelectedCount();
@@ -268,14 +357,16 @@ class PermissionsPage {
 
     selectAllScreens() {
         document.querySelectorAll('.screen-checkbox').forEach(c => {
-            c.checked = true;
+            this.applySelectionState(c, true);
         });
         this.updateSelectedCount();
     }
 
     clearAllScreens() {
         document.querySelectorAll('.screen-checkbox').forEach(c => {
-            c.checked = false;
+            if (!c.disabled) {
+                this.applySelectionState(c, false);
+            }
         });
         this.updateSelectedCount();
     }

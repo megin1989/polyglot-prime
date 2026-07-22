@@ -1892,7 +1892,18 @@ const migrateSP = pgSQLa.storedProcedure(
           ) THEN
               ALTER TABLE techbd_udi_ingress.idp_screens
               ADD COLUMN scr_group TEXT NOT NULL DEFAULT 'data';
-          END IF;          
+          END IF;       
+          
+          IF NOT EXISTS (
+                  SELECT 1
+                  FROM information_schema.columns
+                  WHERE table_schema = 'techbd_udi_ingress'
+                  AND table_name = 'idp_screens'
+                  AND column_name = 'parent_scr_id'
+              ) THEN
+                  ALTER TABLE techbd_udi_ingress.idp_screens
+                  ADD COLUMN parent_scr_id INT NULL;
+          END IF;
 
       ${idpRoleTenantPermission}
           IF NOT EXISTS (

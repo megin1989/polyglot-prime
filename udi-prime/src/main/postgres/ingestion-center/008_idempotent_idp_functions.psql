@@ -42,6 +42,7 @@ SELECT
     sc.scr_code,
     sc.scr_name,
     sc.scr_type,
+    sc.parent_scr_id,
     CASE
         WHEN rtpn.role_id IS NOT NULL THEN TRUE
         ELSE FALSE
@@ -127,7 +128,9 @@ WITH login_role_permissions AS (
     -- 1. Super Admin -> All menus & screens
     SELECT
         mnu.mnu_name,
-        sc.scr_name
+        sc.scr_name,
+		sc.scr_id,
+		sc.parent_scr_id
     FROM techbd_udi_ingress.idp_screens sc
     JOIN techbd_udi_ingress.idp_menu mnu
         ON sc.mnu_id = mnu.mnu_id
@@ -140,7 +143,9 @@ WITH login_role_permissions AS (
     -- 2. Admin -> All Data menus & screens
     SELECT
         mnu.mnu_name,
-        sc.scr_name
+        sc.scr_name,
+		sc.scr_id,
+		sc.parent_scr_id
     FROM techbd_udi_ingress.idp_screens sc
     JOIN techbd_udi_ingress.idp_menu mnu
         ON sc.mnu_id = mnu.mnu_id
@@ -155,7 +160,9 @@ WITH login_role_permissions AS (
     -- 3. Other Roles -> Assigned permissions only
     SELECT
         mnu.mnu_name,
-        sc.scr_name
+        sc.scr_name,
+		sc.scr_id,
+		sc.parent_scr_id
     FROM techbd_udi_ingress.idp_role_tenant_permission rtpn
     JOIN techbd_udi_ingress.idp_screens sc
         ON sc.scr_id = rtpn.scr_id
@@ -168,12 +175,27 @@ WITH login_role_permissions AS (
         AND has_config_access = FALSE
         AND rl.role_name = in_role_name
 ),
-screens_grouped AS (
+screens_grouped AS ( 
     SELECT
-        mnu_name,
-        jsonb_agg(DISTINCT scr_name ORDER BY scr_name) AS screens
-    FROM login_role_permissions
-    GROUP BY mnu_name
+        p.mnu_name,
+        jsonb_agg(
+            jsonb_build_object(
+                'screen', p.scr_name,
+                'children',
+                COALESCE(
+                    (
+                        SELECT jsonb_agg(c.scr_name ORDER BY c.scr_name)
+                        FROM login_role_permissions c
+                        WHERE c.parent_scr_id = p.scr_id
+                    ),
+                    '[]'::jsonb
+                )
+            )
+            ORDER BY p.scr_name
+        ) AS screens
+    FROM login_role_permissions p
+    WHERE p.parent_scr_id IS NULL
+    GROUP BY p.mnu_name 
 )
     SELECT jsonb_object_agg(mnu_name, screens)
     INTO result
@@ -183,7 +205,6 @@ screens_grouped AS (
 
 END;
 $function$;
-
 
 /* Menu polulation */
 DROP FUNCTION IF EXISTS techbd_udi_ingress.idp_insert_role_menus_with_permissions(int, jsonb, timestamp, text);
