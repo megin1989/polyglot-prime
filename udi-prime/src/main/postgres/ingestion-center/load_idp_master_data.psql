@@ -187,3 +187,51 @@ WHERE scr_code = 'scr_Roles';
 UPDATE techbd_udi_ingress.idp_screens
 SET scr_name = 'FHIR Failed Submissions (Data Lake)'
 WHERE scr_code = 'scr_FHIR_via_HTTPS_FAILED';
+
+
+
+DELETE FROM techbd_udi_ingress.idp_screens
+WHERE scr_code IN (
+    'scr_Perfomance_overview_api',
+    'scr_Perfomance_overview_ui',
+    'scr_TechBD_OpenAPI_UI',
+    'scr_OpenAPI_UI',
+    'wid_Recent_Direct_FHIR_Bundles',
+    'wid_Recent_CSV_FHIR_Bundles',
+    'wid_Recent_CCDA_FHIR_Bundles',
+    'wid_Recent_HL7_FHIR_Bundles',
+    'wid_Submissions',
+    'wid_Production' 
+); 
+
+
+-- Parent
+INSERT INTO techbd_udi_ingress.idp_screens
+(scr_code, scr_name, description, scr_type, scr_group, mnu_id, order_no, is_active, provenance, created_by, parent_scr_id)
+VALUES
+('scr_Performance_Overview', 'Performance Overview', 'Performance Overview screen', 'page', 'data', 4, 7, TRUE, 'Hub UI', CURRENT_USER, NULL)
+ON CONFLICT (scr_code) DO NOTHING;
+
+-- Children
+INSERT INTO techbd_udi_ingress.idp_screens
+(scr_code, scr_name, description, scr_type, scr_group, mnu_id, order_no, is_active, provenance, created_by, parent_scr_id)
+VALUES
+('scr_API', 'API', 'API', 'page', 'data', 4, 1, TRUE, 'Hub UI', CURRENT_USER, (SELECT scr_id FROM techbd_udi_ingress.idp_screens WHERE scr_code = 'scr_Performance_Overview')),
+('scr_User_Interactions', 'User Interactions', 'User Interactions screen', 'page', 'data', 4, 2, TRUE, 'Hub UI', CURRENT_USER, (SELECT scr_id FROM techbd_udi_ingress.idp_screens WHERE scr_code = 'scr_Performance_Overview'))
+ON CONFLICT (scr_code) DO NOTHING;
+
+
+-- Parent
+INSERT INTO techbd_udi_ingress.idp_screens
+(scr_code, scr_name, description, scr_type, scr_group, mnu_id, order_no, is_active, provenance, created_by)
+VALUES
+('scr_OpenAPI_UI', 'OpenAPI UI', 'OpenAPI UI screen', 'page', 'data', 5, 5, TRUE, 'Hub UI', CURRENT_USER)
+ON CONFLICT (scr_code) DO NOTHING;
+
+-- Children
+INSERT INTO techbd_udi_ingress.idp_screens
+(scr_code, scr_name, description, scr_type, scr_group, mnu_id, order_no, is_active, provenance, created_by, parent_scr_id)
+VALUES
+('scr_Tech_by_Design_OpenAPI_UI', 'Tech by Design OpenAPI UI', 'Tech by Design OpenAPI UI screen', 'page', 'data', 5, 1, TRUE, 'Hub UI', CURRENT_USER,
+ (SELECT scr_id FROM techbd_udi_ingress.idp_screens WHERE scr_code = 'scr_OpenAPI_UI'))
+ON CONFLICT (scr_code) DO NOTHING;
