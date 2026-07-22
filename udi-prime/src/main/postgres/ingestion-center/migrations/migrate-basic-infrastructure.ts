@@ -47,6 +47,10 @@ export const dvts = dvp.dataVaultTemplateState<EmitContext>({
   defaultNS: ingressSchema,
 });
 
+const mcoSchema = SQLa.sqlSchemaDefn("mco_data", {
+  isIdempotent: true,
+});
+
 const {
   text,
   jsonbNullable,
@@ -610,46 +614,6 @@ const refCodeLookUp = SQLa.tableDefinition("ref_code_lookup", {
   sqlNS: ingressSchema
 });
 
-/*const nexusInteractionHub = dvts.hubTable("nexus_interaction", {
-  hub_nexus_interaction_id: primaryKey(),
-  key: textNullable(),
-  ...dvts.housekeeping.columns,
-});
-
-const nexusInteractionIngestionSat = nexusInteractionHub.satelliteTable(
-  "ingestion",
-  {
-    sat_nexus_interaction_ingestion_id: primaryKey(),
-    hub_nexus_interaction_id: nexusInteractionHub.references.hub_nexus_interaction_id(),
-    tenant_id: text(),
-    request_uri: text(),
-    request_url: text(),
-    nature: text(),
-    content_type: textNullable(),
-    payload_hash: textNullable(),
-    payload_size: textNullable(),
-    original_file_name: textNullable(),   
-    from_state: textNullable(),
-    to_state: textNullable(),
-    user_agent: textNullable(),
-    client_ip_address: textNullable(),
-    additional_details: jsonbNullable(),
-    general_errors: jsonbNullable(),
-    elaboration: jsonbNullable(),    
-    techbd_version_number: textNullable(),
-    ...dvts.housekeeping.columns,
-  },
-);
-
-const linkNexusInteraction = SQLa.tableDefinition("link_nexus_interaction", {
-    hub_nexus_interaction_id: nexusInteractionHub.references.hub_nexus_interaction_id(),
-    hub_interaction_id:interactionHub.references.hub_interaction_id(),
-    ...dvts.housekeeping.columns
-  }, {
-    isIdempotent: true,
-    sqlNS: ingressSchema
-});*/
-
 const ccdaReplayDetails = SQLa.tableDefinition("ccda_replay_details", {
   bundle_id: text(),
   hub_interaction_id: textNullable(),
@@ -887,6 +851,95 @@ const idpRoleTenantPermission = SQLa.tableDefinition("idp_role_tenant_permission
   sqlNS: ingressSchema,
 });
 
+//MCO Integration Tables
+const mcoRecords = SQLa.tableDefinition("mco_records", {
+  //batch_guid: text().default("techbd_udi_ingress.uuid_generate_v4()"),
+  //batch_guid: text().default("gen_random_uuid()::TEXT"),
+  batch_id: serial(),
+  root_file_name: textNullable(),
+  created_on_utc: dateTime(),
+  updated_on_utc: dateTimeNullable(),
+  total_records: integer(),
+  processed_count: integer().default(0),
+  errored_count: integer().default(0),
+  is_active: boolean(),
+  status: textNullable(),
+  tenant_id: text(),
+  file_size_in_kb: textNullable(),
+  resubmitted_count: integer().default(0),
+  sent_to_datalake_time: dateTimeNullable(),
+  qa_completed_time: dateTimeNullable(),
+  sent_to_mco_time: dateTimeNullable(),
+  reporting_month: textNullable(),
+}, {
+  isIdempotent: true,
+  sqlNS: mcoSchema,
+  constraints: (props, tableName) => {
+    const c = SQLa.tableConstraints(tableName, props);
+    return [
+      c.unique("batch_id"),
+    ];
+  },
+});
+
+const mcoRecordDetails = SQLa.tableDefinition("mco_record_details", {
+  //batch_details_guid: text().default("gen_random_uuid()::TEXT"),
+  batch_details_id: serial(),
+  current_file_name: textNullable(),
+  file_size_in_kb: textNullable(),
+  total_records: integer(),
+  processed_count: integer().default(0),
+  errored_count: integer().default(0),
+  qa_completed_time: dateTimeNullable(),
+  sent_to_datalake_time: dateTimeNullable(),
+  sent_to_mco_time: dateTimeNullable(),
+  created_on_utc: dateTimeNullable(),
+  updated_on_utc: dateTimeNullable(),
+  is_active: boolean(),
+  status: textNullable(),
+  batch_id: integer(),
+  reporting_month: textNullable(),
+  tenant_id: text(),
+}, {
+  isIdempotent: true,
+  sqlNS: mcoSchema
+});
+
+const mcoErrorTypes = SQLa.tableDefinition("mco_error_types", {
+  //error_type_guid: text().default("gen_random_uuid()::TEXT"),
+  error_type_id: serial(),
+  error_type_name: textNullable(),
+  error_type_description: textNullable(),
+  is_active: boolean(),
+  created_on_utc: dateTimeNullable(),
+  updated_on_utc: dateTimeNullable(),
+}, {
+  isIdempotent: true,
+  sqlNS: mcoSchema,
+  constraints: (props, tableName) => {
+    const c = SQLa.tableConstraints(tableName, props);
+    return [
+      c.unique("error_type_id"),
+    ];
+  },
+});
+
+const mcoRecordErrorLogs = SQLa.tableDefinition("mco_record_error_logs", {
+  //error_log_guid: text().default("gen_random_uuid()::TEXT"),
+  error_log_id: serial(),
+  batch_id: integer(),
+  error_json: jsonB,
+  created_on_utc: dateTimeNullable(),
+  updated_on_utc: dateTimeNullable(),
+  batch_details_id: integer(),
+  is_active: boolean(),
+  error_type_id: integer(),
+  tenant_id: text(),
+}, {
+  isIdempotent: true,
+  sqlNS: mcoSchema
+});
+
 // Function to read SQL from a list of .psql files
 async function readSQLFiles(filePaths: readonly string[]): Promise<string[]> {
   const sqlContents = [];
@@ -917,7 +970,7 @@ const dependencies = [
   "../load_idp_master_data.psql",
   "../007_idempotent_interaction.psql",
   "../008_idempotent_idp_functions.psql",
-  "../009_idempotent_mco.psql",
+  "../009_idempotent_mco_functions.psql",
 ] as const;
 
 const testMigrateDependencies = [
@@ -1006,6 +1059,8 @@ const migrateSP = pgSQLa.storedProcedure(
       CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA ${ingressSchema.sqlNamespace};
 
       CREATE EXTENSION IF NOT EXISTS "pg_trgm" SCHEMA ${ingressSchema.sqlNamespace};
+
+      CREATE SCHEMA IF NOT EXISTS mco_data;
 
 
       ${assuranceSchema}
@@ -1915,6 +1970,48 @@ const migrateSP = pgSQLa.storedProcedure(
               ADD CONSTRAINT idp_role_tenant_permission_pkey PRIMARY KEY (permission_id);
           END IF;
 
+      ${mcoRecords}
+        ALTER TABLE mco_data.mco_records ADD COLUMN IF NOT EXISTS batch_guid TEXT NOT NULL DEFAULT gen_random_uuid()::text;
+        IF NOT EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conname = 'fk_mco_record_tenant'
+        ) THEN
+            ALTER TABLE mco_data.mco_records
+            ADD CONSTRAINT fk_mco_record_tenant
+            FOREIGN KEY (tenant_id)
+            REFERENCES techbd_udi_ingress.tenants (tenant_id);
+        END IF;
+
+      ${mcoRecordDetails}
+        ALTER TABLE mco_data.mco_record_details ADD COLUMN IF NOT EXISTS batch_details_guid TEXT NOT NULL DEFAULT gen_random_uuid()::text;
+        IF NOT EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conname = 'fk_mco_record_details_tenant'
+        ) THEN
+            ALTER TABLE mco_data.mco_record_details
+            ADD CONSTRAINT fk_mco_record_details_tenant
+            FOREIGN KEY (tenant_id)
+            REFERENCES techbd_udi_ingress.tenants (tenant_id);
+        END IF;
+
+      ${mcoErrorTypes}
+        ALTER TABLE mco_data.mco_error_types ADD COLUMN IF NOT EXISTS error_type_guid TEXT NOT NULL DEFAULT gen_random_uuid()::text;
+
+      ${mcoRecordErrorLogs}
+        ALTER TABLE mco_data.mco_record_error_logs ADD COLUMN IF NOT EXISTS error_log_guid TEXT NOT NULL DEFAULT gen_random_uuid()::text;
+        IF NOT EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conname = 'fk_mco_record_error_logs_tenant'
+        ) THEN
+            ALTER TABLE mco_data.mco_record_error_logs
+            ADD CONSTRAINT fk_mco_record_error_logs_tenant
+            FOREIGN KEY (tenant_id)
+            REFERENCES techbd_udi_ingress.tenants (tenant_id);
+        END IF;
+
       ${dependenciesSQL}
 
       /* Call function to create RLS SELECT/INSERT Policies for tables.*/
@@ -2094,6 +2191,7 @@ export function generated() {
       DROP SCHEMA IF EXISTS ${ingressSchema.sqlNamespace} cascade;
       DROP SCHEMA IF EXISTS ${assuranceSchema.sqlNamespace} cascade;
       DROP SCHEMA IF EXISTS ${diagnosticsSchema.sqlNamespace} cascade;
+      DROP SCHEMA IF EXISTS ${mcoSchema.sqlNamespace} cascade;
 
       DROP PROCEDURE IF EXISTS "${migrateSP.sqlNS?.sqlNamespace}"."${migrateSP.routineName}" CASCADE;
       DROP PROCEDURE IF EXISTS "${rollbackSP.sqlNS?.sqlNamespace}"."${rollbackSP.routineName}" CASCADE;

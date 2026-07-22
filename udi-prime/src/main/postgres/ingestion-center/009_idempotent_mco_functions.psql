@@ -1,5 +1,5 @@
 
-SET statement_timeout = 0;
+/*SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
@@ -137,19 +137,19 @@ CREATE TABLE IF NOT EXISTS mco_audit.mco_records (
     qa_completed_time timestamp with time zone,
     sent_to_mco_time timestamp with time zone,
     reporting_month character varying(255)
-);
+);*/
 
 
 /*******************************************************************************************
 * Comprehensive view of Mco Source monitoring * 
 ******************************************************************************************/
-DROP VIEW IF EXISTS mco_audit.v_source_monitoring CASCADE;
-CREATE OR REPLACE VIEW mco_audit.v_source_monitoring AS
+DROP VIEW IF EXISTS mco_data.v_source_monitoring CASCADE;
+CREATE OR REPLACE VIEW mco_data.v_source_monitoring AS
 SELECT
     mr.batch_id,
     mr.batch_guid,
-    mr.mco_id,
-    m.mco_code,
+    mr.tenant_id,
+    m.tenant_name AS mco_code,
     CASE
         WHEN mr.sent_to_mco_time IS NOT NULL THEN 'Sent To MCO'
         WHEN mr.sent_to_datalake_time IS NOT NULL THEN 'Sent To Data Lake'
@@ -166,7 +166,7 @@ SELECT
     END,
     'DD-MM-YYYY HH24:MI:SS'
     ) AS date_range,
-    m.mco_name,
+    m.tenant_displayname AS mco_name,
     mr.root_file_name,
     mr.status,
     mr.created_on_utc,
@@ -180,6 +180,6 @@ SELECT
     mr.errored_count,
     mr.resubmitted_count
  
-FROM mco_audit.mco_records mr
-INNER JOIN mco_audit.mco m
-    ON mr.mco_id = m.mco_id;
+FROM mco_data.mco_records mr
+INNER JOIN techbd_udi_ingress.tenants m
+    ON mr.tenant_id = m.tenant_id;
