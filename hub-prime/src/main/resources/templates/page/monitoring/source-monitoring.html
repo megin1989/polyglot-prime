@@ -30,28 +30,39 @@
 
         import { AGGridAideBuilder } from '@presentation/shell/aggrid-aide.js';
 
-        const schemaName = "mco_audit";
+        const schemaName = "mco_data";
         const viewName = "v_source_monitoring";
 
         document.addEventListener("DOMContentLoaded", function () {
 
-            function formatStatus(status) {
+        function getDetailSourceMonitoringData(params) {
+            const interactionId = params.data.interaction_id;
+            console.log('Interaction ID:', interactionId);
+            fetch(window.shell.serverSideUrl(`/api/ux/tabular/jooq/${schemaName}/${DetailViewName}/interaction_id/${interactionId}.json`))
+                .then(response => {
+                    if (response.url.includes('/?timeout=true')) {
+                        window.location.href = '/?timeout=true'; // Redirect to login page
+                        return null; // Prevent further processing of the response
+                    }
+                    return response.json();
+                })
+                .then(response => {
+                    params.successCallback(response);
+                })
+                .catch(error => {
+                    console.error('Error fetching details data' + error);
+                });
+        }
 
-                if (!status) return "";
-
-                return status
-                    .toLowerCase()
-                    .replaceAll("_", " ")
-                    .replace(/\b\w/g, c => c.toUpperCase());
-
-            }
+            const detailSourceMonitoring = [                               
+            { headerName: "Resubmitted Count", field: "resubmitted_count", filter: "agTextColumnFilter", headerTooltip: "Number of times the source file has been resubmitted." },
+            { headerName: "Last Updated", field: "updated_on_utc", filter: "agTextColumnFilter", headerTooltip: " " }, 
+            ];             
 
             const agGridInstance =
                 new AGGridAideBuilder()
 
-                    .withColumnDefs([
-
-                        
+                    .withColumnDefs([                      
                         {
                             headerName: "MCO Code",
                             field: "mco_code",
@@ -72,51 +83,12 @@
                             sortable: true,
                             filter: "agTextColumnFilter"
                         },
-
                         {
                             headerName: "Received Month",
-                            field: "created_on_utc",
+                            field: "reporting_month",
                             sortable: true,
-                            filter: "agDateColumnFilter",
-                            valueFormatter: params => {
-
-                                if (!params.value) return "";
-
-                                return new Date(params.value)
-                                    .toLocaleString("default", {
-                                        month: "long",
-                                        year: "numeric"
-                                    });
-
-                            }
-                        },
-
-                        {
-                            headerName: "Date Range Type",
-                            field: "date_range_type",
-                            sortable: true,
-                            filter: "agTextColumnFilter",
-                            valueFormatter: params => {
-
-                                if (!params.value) return "";
-
-                                return params.value
-                                    .replaceAll("_", " ")
-                                    .replace(/\b\w/g, c => c.toUpperCase());
-
-                            }
-                        },
-
-                        {
-                            headerName: "Date",
-                            field: "date_range",
-                            sortable: true,
-                            filter: "agTextColumnFilter", // since date_range is now text
-                            valueFormatter: params => params.value || ""
-                        },
-
-                        
-
+                            filter: "agTextColumnFilter" 
+                        },                                        
                         {
                             headerName: "File Size (KB)",
                             field: "file_size_in_kb",
@@ -150,23 +122,48 @@
                             field: "status",
                             sortable: true,
                             filter: "agTextColumnFilter",
-                            cellRenderer: params => formatStatus(params.value)
-                        }
+                           // cellRenderer: params => formatStatus(params.value)
+                        },
+                            {
+                            headerName: "Date Range Type",
+                            field: "date_range_type",
+                            sortable: true,
+                            filter: "agTextColumnFilter", 
+                        },  
+                        {
+                            headerName: "Request Times",
+                            field: "date_range",
+                            sort: "desc",
+                           // cellRenderer: 'agGroupCellRenderer',
+                            filter: "agDateColumnFilter"  
+                        }                         
 
                     ])
 
-                    .withServerSideDatasource(
-                        window.shell.serverSideUrl(
-                            `/api/ux/tabular/jooq/${schemaName}/${viewName}.json`
-                        )
-                    )
-
-                    .withGridDivStyles({
-                        width: "100%",
-                        height: "700px"
-                    })
-
-                    .build();
+                .withServerSideDatasource(
+                    window.shell.serverSideUrl(`/api/ux/tabular/jooq/${schemaName}/${viewName}.json`),
+                    (data, valueCols) => {
+                        return valueCols.map(col => ({
+                            headerName: col.displayName,
+                            field: col.field
+                        }));
+                    }
+                )
+                .withMasterDetail(true)
+                .withDetailCellRendererParams({
+                    detailGridOptions: {
+                        columnDefs: detailSourceMonitoring,
+                        defaultColDef: {
+                            flex: 1
+                        }
+                    },
+                    getDetailRowData: params => {
+                        getDetailSourceMonitoringData(params);
+                    }
+                })
+                .withDetailRowAutoHeight(false) 
+                .withGridDivStyles({ height: "750px", width: "100%" })
+                .build();
 
             agGridInstance.init("serverDataGrid");
 
@@ -221,34 +218,19 @@
             <div id="accordionContent"
                  class="hidden pl-4 border-l-2 border-blue-200">
 
-                <p>
-
-
+                <p>                  
                     <strong>MCO Code:</strong>
                     Unique identifier for the Managed Care Organization.
                     <br><br>
-
                     <strong>Source Name:</strong>
                     Name of the MCO that submitted the file.
                     <br><br>
-
                     <strong>File Name:</strong>
                     Original uploaded file name.
                     <br><br>
-
                     <strong>Received Month:</strong>
                     Month and year when the file was received.
-                    <br><br>
-
-                    <strong>Date Range Type:</strong>
-                    Processing stage used for the displayed date.
-                    <br><br>
-
-                    <strong>Date:</strong>
-                    Date corresponding to the selected processing stage.
-                    <br><br>
-
-                    
+                    <br><br>                 
 
                     <strong>File Size (KB):</strong>
                     Size of the uploaded file.
@@ -261,13 +243,19 @@
                     <strong>Number of Processed:</strong>
                     Number of successfully processed records.
                     <br><br>
-
                     <strong>Number of Errors:</strong>
                     Number of failed records.
                     <br><br>
 
                     <strong>Status:</strong>
                     Current processing status.
+                    <br><br>
+                    <strong>Date Range Type:</strong>
+                    Processing stage used for the displayed date.
+                    <br><br>                     
+                    <strong>Request Time:</strong>
+                    Date corresponding to the selected processing stage.
+                    <br><br>                     
 
                 </p>
 

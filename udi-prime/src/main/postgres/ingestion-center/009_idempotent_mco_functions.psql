@@ -180,7 +180,10 @@ SELECT
     mr.qa_completed_time,
     mr.sent_to_datalake_time,
     mr.sent_to_mco_time,
-    mr.reporting_month,
+    to_char(
+        to_date(mr.reporting_month, 'MM-YYYY'),
+        'FMMonth YYYY'
+    ) AS reporting_month,
     mr.file_size_in_kb,
     mr.total_records,
     mr.processed_count,
@@ -190,3 +193,32 @@ SELECT
 FROM mco_data.mco_records mr
 INNER JOIN techbd_udi_ingress.tenants m
     ON mr.tenant_id = m.tenant_id;
+
+
+/*******************************************************************************************
+* Comprehensive view of Mco Error monitoring * 
+******************************************************************************************/
+drop view if exists mco_data.v_error_monitoring cascade;
+create or replace view mco_data.v_error_monitoring as
+ select
+	mrel.batch_id,
+	mr.batch_guid,
+	mr.tenant_id,
+	m.tenant_name as mco_code,
+	mr.root_file_name,
+	m.tenant_displayname as mco_name,
+	mrel.created_on_utc,
+	mr.sent_to_datalake_time,
+	mrel.error_json ->> 'message'::text as error_message,
+	mrel.error_json ->> 'fileName'::text as file_name,
+	(mrel.error_json ->> 'lineNumber'::text)::integer as line_number
+from
+	mco_data.mco_record_error_logs mrel
+join mco_data.mco_records mr on
+	mrel.batch_id = mr.batch_id
+left join techbd_udi_ingress.tenants m on
+	mr.tenant_id = m.tenant_id
+where
+	coalesce(mrel.error_json->>'message', '') <> ''
+order by
+	mrel.created_on_utc desc ;    
