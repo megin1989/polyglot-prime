@@ -157,7 +157,7 @@ SELECT
         ELSE 'Received'
     END AS date_range_type,
  
-    TO_CHAR(
+    /*TO_CHAR(
     CASE
         WHEN mr.sent_to_mco_time IS NOT NULL THEN mr.sent_to_mco_time
         WHEN mr.sent_to_datalake_time IS NOT NULL THEN mr.sent_to_datalake_time
@@ -165,7 +165,14 @@ SELECT
         ELSE mr.created_on_utc
     END,
     'DD-MM-YYYY HH24:MI:SS'
-    ) AS date_range,
+    ) AS date_range,*/
+    CASE
+        WHEN mr.sent_to_mco_time IS NOT NULL THEN mr.sent_to_mco_time
+        WHEN mr.sent_to_datalake_time IS NOT NULL THEN mr.sent_to_datalake_time
+        WHEN mr.qa_completed_time IS NOT NULL THEN mr.qa_completed_time
+        ELSE mr.created_on_utc
+    END AS date_range,
+    
     m.tenant_displayname AS mco_name,
     mr.root_file_name,
     mr.status,

@@ -72,7 +72,7 @@ BEGIN
 	    ARRAY['text', 'text', 'text', 'text', 'text', 'text', 'text', 'jsonb', 'text', 'text', 'timestamptz', 'text', 'text', 'jsonb', 'text', 'text', 'text', 'text', 'text'],
 	    'Function sat_interaction_hl7_request_upserted exists'
 	);
-	RETURN NEXT has_function(schema_name, 'upsert_user_session', ARRAY['text', 'text', 'text', 'timestamp with time zone', 'timestamp with time zone', 'timestamp with time zone', 'text', 'jsonb'], 'Function upsert_user_session exists');
+	RETURN NEXT has_function(schema_name, 'upsert_user_session', ARRAY['text', 'text', 'text', 'timestamp with time zone', 'timestamp with time zone', 'timestamp with time zone', 'text', 'jsonb', 'jsonb'], 'Function upsert_user_session exists');
 
 	-- Check existence of required tables   
 	RETURN NEXT has_table(schema_name, 'hub_interaction', 'The table techbd_udi_ingress.hub_interaction should exist.');
@@ -239,7 +239,7 @@ BEGIN
 	
 	RETURN NEXT has_table(schema_name, 'user_sessions', 'The table techbd_udi_ingress.user_sessions should exist.');
 	RETURN NEXT columns_are(schema_name, 'user_sessions', 
-		ARRAY['session_id', 'user_id', 'username', 'session_start_time', 'session_end_time', 'session_expiry_time', 'source', 'updated_at', 'updated_by', 'created_at', 'created_by', 'provenance'], 
+		ARRAY['session_id', 'user_id', 'username', 'session_start_time', 'session_end_time', 'session_expiry_time', 'source', 'updated_at', 'updated_by', 'created_at', 'created_by', 'provenance', 'fusion_auth_response'], 
 		'The columns of techbd_udi_ingress.user_sessions should match the expected structure.');
 
     /*=================== Testing TABLE COLUMNS  ========================*/

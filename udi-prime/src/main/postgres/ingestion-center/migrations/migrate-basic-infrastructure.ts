@@ -769,6 +769,7 @@ const userSessions = SQLa.tableDefinition("user_sessions", {
     source: textNullable(), // IDP Provider (GIT or FusionAuth)
     updated_at: dateTimeNullable(),
     updated_by: textNullable(),
+    fusion_auth_response: jsonbNullable(),
     ...dvts.housekeeping.columns,
 }, {
     isIdempotent: true,
@@ -1897,6 +1898,16 @@ const migrateSP = pgSQLa.storedProcedure(
         ON techbd_udi_ingress.user_sessions(session_expiry_time);
       END IF;
 
+      IF NOT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'techbd_udi_ingress'
+                AND table_name = 'user_sessions'
+                AND column_name = 'fusion_auth_response'
+      ) THEN
+            ALTER TABLE techbd_udi_ingress.user_sessions ADD COLUMN IF NOT EXISTS fusion_auth_response jsonb;
+      END IF;
+
       ${idpRoles}
           IF NOT EXISTS (
               SELECT 1
@@ -1994,6 +2005,39 @@ const migrateSP = pgSQLa.storedProcedure(
             REFERENCES techbd_udi_ingress.tenants (tenant_id);
         END IF;
 
+        IF EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'mco_data'
+            AND table_name = 'mco_records'
+            AND column_name = 'processed_count'
+            AND is_nullable = 'NO'
+      ) THEN
+          EXECUTE 'ALTER TABLE mco_data.mco_records ALTER COLUMN processed_count DROP NOT NULL';
+      END IF; 
+
+      IF EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'mco_data'
+            AND table_name = 'mco_records'
+            AND column_name = 'errored_count'
+            AND is_nullable = 'NO'
+      ) THEN
+          EXECUTE 'ALTER TABLE mco_data.mco_records ALTER COLUMN errored_count DROP NOT NULL';
+      END IF;
+
+      IF EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'mco_data'
+            AND table_name = 'mco_records'
+            AND column_name = 'resubmitted_count'
+            AND is_nullable = 'NO'
+      ) THEN
+          EXECUTE 'ALTER TABLE mco_data.mco_records ALTER COLUMN resubmitted_count DROP NOT NULL';
+      END IF;
+
       ${mcoRecordDetails}
         ALTER TABLE mco_data.mco_record_details ADD COLUMN IF NOT EXISTS batch_details_guid TEXT NOT NULL DEFAULT gen_random_uuid()::text;
         IF NOT EXISTS (
@@ -2006,6 +2050,28 @@ const migrateSP = pgSQLa.storedProcedure(
             FOREIGN KEY (tenant_id)
             REFERENCES techbd_udi_ingress.tenants (tenant_id);
         END IF;
+
+        IF EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'mco_data'
+            AND table_name = 'mco_record_details'
+            AND column_name = 'processed_count'
+            AND is_nullable = 'NO'
+      ) THEN
+          EXECUTE 'ALTER TABLE mco_data.mco_record_details ALTER COLUMN processed_count DROP NOT NULL';
+      END IF; 
+
+      IF EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'mco_data'
+            AND table_name = 'mco_record_details'
+            AND column_name = 'errored_count'
+            AND is_nullable = 'NO'
+      ) THEN
+          EXECUTE 'ALTER TABLE mco_data.mco_record_details ALTER COLUMN errored_count DROP NOT NULL';
+      END IF;
 
       ${mcoErrorTypes}
         ALTER TABLE mco_data.mco_error_types ADD COLUMN IF NOT EXISTS error_type_guid TEXT NOT NULL DEFAULT gen_random_uuid()::text;

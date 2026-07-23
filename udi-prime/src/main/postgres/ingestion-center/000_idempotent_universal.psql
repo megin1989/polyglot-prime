@@ -250,9 +250,9 @@ $$;
  * - Session_id is getting as response when insert / update operation
  */
 
-DROP FUNCTION IF EXISTS techbd_udi_ingress.upsert_user_session(
-    TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, JSON
-);
+DROP FUNCTION IF EXISTS techbd_udi_ingress.upsert_user_session(TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, JSON);
+DROP FUNCTION IF EXISTS techbd_udi_ingress.upsert_user_session(TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, JSONB);
+DROP FUNCTION IF EXISTS techbd_udi_ingress.upsert_user_session(TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, JSONB, JSONB);
 
 CREATE OR REPLACE FUNCTION techbd_udi_ingress.upsert_user_session(
     p_session_id TEXT,
@@ -262,7 +262,8 @@ CREATE OR REPLACE FUNCTION techbd_udi_ingress.upsert_user_session(
     p_session_end_time timestamp with time zone,
     p_session_expiry_time timestamp with time zone,
     p_source TEXT,
-    p_provenance JSONB
+    p_provenance JSONB,
+    p_fusion_auth_response JSONB DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -316,7 +317,8 @@ BEGIN
                 source,
                 provenance,
                 created_at,
-                created_by          
+                created_by,
+                fusion_auth_response
             )
             VALUES (
                 v_session_id::TEXT,
@@ -328,7 +330,8 @@ BEGIN
                 p_source,
                 p_provenance,
                 CURRENT_TIMESTAMP,
-                p_username
+                p_username,
+                p_fusion_auth_response
             );
 
             v_result := json_build_object(
