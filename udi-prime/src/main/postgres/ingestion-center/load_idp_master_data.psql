@@ -244,3 +244,10 @@ VALUES
 ('scr_TechBD_Validation_Failures', 'Tech by Design – Validation Failures', 'Tech by Design – Validation Failures screen', 'page', 'data', 3, 2, TRUE, 'Hub UI', CURRENT_USER, (SELECT scr_id FROM techbd_udi_ingress.idp_screens WHERE scr_code = 'scr_Need_Attention')),
 ('scr_SHINNY_Datalake_Failed_Submissions', 'SHIN-NY Data Lake – Failed Submissions', 'SHIN-NY Data Lake – Failed Submissions screen', 'page', 'data', 3, 3, TRUE, 'Hub UI', CURRENT_USER, (SELECT scr_id FROM techbd_udi_ingress.idp_screens WHERE scr_code = 'scr_Need_Attention'))
 ON CONFLICT (scr_code) DO NOTHING;
+
+-- Children
+UPDATE techbd_udi_ingress.idp_screens
+SET 
+parent_scr_id = (SELECT scr_id FROM techbd_udi_ingress.idp_screens WHERE scr_code = 'scr_CSV_Data_Quality')
+where
+scr_code = 'scr_CSV_Issues_Summary' or scr_code = 'scr_CSV_Issues';
