@@ -1782,6 +1782,17 @@ const migrateSP = pgSQLa.storedProcedure(
 
       ${tenant}
       IF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'tenants_pkey'
+            AND conrelid = 'techbd_udi_ingress.tenants'::regclass
+      ) THEN
+          ALTER TABLE techbd_udi_ingress.tenants
+          ADD CONSTRAINT tenants_pkey
+          PRIMARY KEY (tenant_id);
+      END IF;
+
+      IF NOT EXISTS (
             SELECT 1
             FROM information_schema.columns
             WHERE table_schema = 'techbd_udi_ingress'
