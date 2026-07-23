@@ -235,3 +235,12 @@ VALUES
 ('scr_Tech_by_Design_OpenAPI_UI', 'Tech by Design OpenAPI UI', 'Tech by Design OpenAPI UI screen', 'page', 'data', 5, 1, TRUE, 'Hub UI', CURRENT_USER,
  (SELECT scr_id FROM techbd_udi_ingress.idp_screens WHERE scr_code = 'scr_OpenAPI_UI'))
 ON CONFLICT (scr_code) DO NOTHING;
+
+-- Children
+INSERT INTO techbd_udi_ingress.idp_screens
+(scr_code, scr_name, description, scr_type, scr_group, mnu_id, order_no, is_active, provenance, created_by, parent_scr_id)
+VALUES
+('scr_TechBD_Processing_Failures', 'Tech by Design – Processing Failures', 'Tech by Design – Processing Failures Screen', 'page', 'data', 3, 1, TRUE, 'Hub UI', CURRENT_USER, (SELECT scr_id FROM techbd_udi_ingress.idp_screens WHERE scr_code = 'scr_Need_Attention')),
+('scr_TechBD_Validation_Failures', 'Tech by Design – Validation Failures', 'Tech by Design – Validation Failures screen', 'page', 'data', 3, 2, TRUE, 'Hub UI', CURRENT_USER, (SELECT scr_id FROM techbd_udi_ingress.idp_screens WHERE scr_code = 'scr_Need_Attention')),
+('scr_SHINNY_Datalake_Failed_Submissions', 'SHIN-NY Data Lake – Failed Submissions', 'SHIN-NY Data Lake – Failed Submissions screen', 'page', 'data', 3, 3, TRUE, 'Hub UI', CURRENT_USER, (SELECT scr_id FROM techbd_udi_ingress.idp_screens WHERE scr_code = 'scr_Need_Attention'))
+ON CONFLICT (scr_code) DO NOTHING;
