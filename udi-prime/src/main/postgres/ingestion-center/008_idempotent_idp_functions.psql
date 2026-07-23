@@ -355,64 +355,69 @@ AS SELECT
 
 DROP PROCEDURE IF EXISTS techbd_udi_ingress.configure_rls_policies();
 CREATE OR REPLACE PROCEDURE techbd_udi_ingress.configure_rls_policies()
- LANGUAGE plpgsql
-AS $procedure$ 
+LANGUAGE plpgsql
+AS $procedure$
 DECLARE
-    table_names_select TEXT[] := ARRAY[
-      'sat_interaction_ccda_request',
-      'sat_interaction_fhir_request',
-      'sat_interaction_fhir_screening_info',
-      'sat_interaction_fhir_screening_organization',
-      'sat_interaction_fhir_screening_patient',
-      'sat_interaction_fhir_session_diagnostic',
-      'sat_interaction_flat_file_csv_request',
-      'sat_interaction_hl7_request',
-      'sat_interaction_http_request',
-      'sat_interaction_user',
-      'sat_interaction_ui_user',
-      'sat_interaction_zip_file_request',
-      'sat_diagnostic_dataledger_api',
-      'sat_diagnostic_exception',
-      'sat_diagnostic_log',
-      'sat_expectation_http_request',
-      'sat_interaction_fhir_validation_issue',
-      'sat_interaction_file_exchange',
-      'sat_interaction_ccda_validation_errors',
-      'sat_interaction_hl7_validation_errors',
-      'dashboard_widget_metadata',
-      'sat_csv_fhir_processing_errors'
+    policy_tables text[][] := ARRAY[
+        ARRAY['techbd_udi_ingress','sat_interaction_ccda_request'],
+        ARRAY['techbd_udi_ingress','sat_interaction_fhir_request'],
+        ARRAY['techbd_udi_ingress','sat_interaction_fhir_screening_info'],
+        ARRAY['techbd_udi_ingress','sat_interaction_fhir_screening_organization'],
+        ARRAY['techbd_udi_ingress','sat_interaction_fhir_screening_patient'],
+        ARRAY['techbd_udi_ingress','sat_interaction_fhir_session_diagnostic'],
+        ARRAY['techbd_udi_ingress','sat_interaction_flat_file_csv_request'],
+        ARRAY['techbd_udi_ingress','sat_interaction_hl7_request'],
+        ARRAY['techbd_udi_ingress','sat_interaction_http_request'],
+        ARRAY['techbd_udi_ingress','sat_interaction_user'],
+        ARRAY['techbd_udi_ingress','sat_interaction_ui_user'],
+        ARRAY['techbd_udi_ingress','sat_interaction_zip_file_request'],
+        ARRAY['techbd_udi_ingress','sat_diagnostic_dataledger_api'],
+        ARRAY['techbd_udi_ingress','sat_diagnostic_exception'],
+        ARRAY['techbd_udi_ingress','sat_diagnostic_log'],
+        ARRAY['techbd_udi_ingress','sat_expectation_http_request'],
+        ARRAY['techbd_udi_ingress','sat_interaction_fhir_validation_issue'],
+        ARRAY['techbd_udi_ingress','sat_interaction_file_exchange'],
+        ARRAY['techbd_udi_ingress','sat_interaction_ccda_validation_errors'],
+        ARRAY['techbd_udi_ingress','sat_interaction_hl7_validation_errors'],
+        ARRAY['techbd_udi_ingress','dashboard_widget_metadata'],
+        ARRAY['techbd_udi_ingress','sat_csv_fhir_processing_errors'],
+
+        ARRAY['mco_data','mco_record_details'],
+        ARRAY['mco_data','mco_record_error_logs'],
+        ARRAY['mco_data','mco_records']
     ];
 
     tenant_col text := 'tenant_id';
+    schema_name text;
     tbl text;
     qry text;
     i int;
-
 BEGIN
-    FOR i IN 1..array_length(table_names_select,1) LOOP
+    FOR i IN 1..array_length(policy_tables,1) LOOP
+        schema_name := policy_tables[i][1];
+        tbl         := policy_tables[i][2];
 
-        tbl := table_names_select[i];
-        EXECUTE format('DROP POLICY IF EXISTS select_policy_%I ON techbd_udi_ingress.%I', tbl,tbl);
-        
-		qry := format($P$
-				CREATE POLICY select_policy_%I
-				ON techbd_udi_ingress.%I
-				FOR SELECT
-					USING(
-					 	current_setting('jwt.claims.is_admin',true)::boolean
-					 OR
-						 %I = ANY(
-						   string_to_array(
-						      current_setting('jwt.claims.tenants',true),
-						      ','
-						   )
-						 )
-					);
-				$P$,tbl,tbl,tenant_col);
+        EXECUTE format('DROP POLICY IF EXISTS select_policy_%I ON %I.%I', tbl, schema_name, tbl);
+
+        qry := format($P$
+	            CREATE POLICY select_policy_%I
+	            ON %I.%I
+	            FOR SELECT
+		            USING (
+		                current_setting('jwt.claims.is_admin', true)::boolean
+		                OR
+		                %I = ANY (
+		                    string_to_array(
+		                        current_setting('jwt.claims.tenants', true),
+		                        ','
+		                    )
+		                )
+		            );
+		        $P$, tbl, schema_name, tbl, tenant_col);
         EXECUTE qry;
 
-        EXECUTE format('ALTER TABLE techbd_udi_ingress.%I ENABLE ROW LEVEL SECURITY', tbl);
-        EXECUTE format('ALTER TABLE techbd_udi_ingress.%I FORCE ROW LEVEL SECURITY', tbl);
+        EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', schema_name, tbl);
+        EXECUTE format('ALTER TABLE %I.%I FORCE ROW LEVEL SECURITY', schema_name, tbl);
     END LOOP;
 END;
 $procedure$
@@ -448,6 +453,7 @@ BEGIN
                 ) value
             )
             AND t.is_active
+            LIMIT 1 -- Remove this LIMIT if all the tenants from the token are to be used
         ),
         ','
     )

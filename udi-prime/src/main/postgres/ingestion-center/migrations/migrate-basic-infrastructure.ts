@@ -921,6 +921,7 @@ const mcoErrorTypes = SQLa.tableDefinition("mco_error_types", {
     const c = SQLa.tableConstraints(tableName, props);
     return [
       c.unique("error_type_id"),
+      c.unique("error_type_name"),
     ];
   },
 });
@@ -2075,6 +2076,16 @@ const migrateSP = pgSQLa.storedProcedure(
 
       ${mcoErrorTypes}
         ALTER TABLE mco_data.mco_error_types ADD COLUMN IF NOT EXISTS error_type_guid TEXT NOT NULL DEFAULT gen_random_uuid()::text;
+
+        IF NOT EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conname = 'uq_mco_error_types_error_type_name'
+        ) THEN
+            ALTER TABLE mco_data.mco_error_types
+            ADD CONSTRAINT uq_mco_error_types_error_type_name
+            UNIQUE (error_type_name);
+        END IF;
 
       ${mcoRecordErrorLogs}
         ALTER TABLE mco_data.mco_record_error_logs ADD COLUMN IF NOT EXISTS error_log_guid TEXT NOT NULL DEFAULT gen_random_uuid()::text;
