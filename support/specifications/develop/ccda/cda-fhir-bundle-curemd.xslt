@@ -1117,11 +1117,16 @@
             "reference": "Patient/<xsl:value-of select='$patientResourceId'/>",
             "display" : "<xsl:value-of select="$patientResourceName"/>"
           }
-          <xsl:if test="ccda:effectiveTime/@value or $encounterEffectiveTimeValue or $currentTimestamp">
+          <xsl:if test="ccda:effectiveTime/@value or ccda:effectiveTime/ccda:low/@value or $encounterEffectiveTimeValue or $currentTimestamp">
             , "effectiveDateTime": "<xsl:choose>
                                       <xsl:when test="ccda:effectiveTime/@value">
                                           <xsl:call-template name="formatDateTime">
                                               <xsl:with-param name="dateTime" select="ccda:effectiveTime/@value"/>
+                                          </xsl:call-template>
+                                      </xsl:when>
+                                      <xsl:when test="ccda:effectiveTime/ccda:low/@value">
+                                          <xsl:call-template name="formatDateTime">
+                                              <xsl:with-param name="dateTime" select="ccda:effectiveTime/ccda:low/@value"/>
                                           </xsl:call-template>
                                       </xsl:when>
                                       <xsl:when test="$encounterEffectiveTimeValue">
@@ -1185,6 +1190,11 @@
                         <xsl:when test="ccda:observation/ccda:effectiveTime/@value">
                             <xsl:call-template name="formatDateTime">
                                 <xsl:with-param name="dateTime" select="ccda:observation/ccda:effectiveTime/@value"/>
+                            </xsl:call-template>
+                        </xsl:when>
+                        <xsl:when test="ccda:observation/ccda:effectiveTime/ccda:low/@value">
+                            <xsl:call-template name="formatDateTime">
+                                <xsl:with-param name="dateTime" select="ccda:observation/ccda:effectiveTime/ccda:low/@value"/>
                             </xsl:call-template>
                         </xsl:when>
                         <xsl:when test="$encounterEffectiveTimeValue">
