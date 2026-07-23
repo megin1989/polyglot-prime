@@ -36,5 +36,11 @@ public class MonitoringController {
     @GetMapping("/monitoring/source-monitoring")
     public String sourceMonitoring(final Model model, final HttpServletRequest request) {
         return presentation.populateModel("page/monitoring/source-monitoring", model, request);
-    }   
+    }  
+    
+    @RouteMapping(label = "Error Monitoring", title = "Error Monitoring", siblingOrder = 40)
+    @GetMapping("/monitoring/error-monitoring")
+    public String errorMonitoring(final Model model, final HttpServletRequest request) {
+        return presentation.populateModel("page/monitoring/error-monitoring", model, request);
+    }      
 }
