@@ -453,7 +453,7 @@ BEGIN
                 ) value
             )
             AND t.is_active
-            LIMIT 1 -- Remove this LIMIT if all the tenants from the token are to be used
+           -- LIMIT 1 -- Remove this LIMIT if all the tenants from the token are to be used
         ),
         ','
     )
