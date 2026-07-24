@@ -14,7 +14,8 @@ ON CONFLICT (error_type_name) DO NOTHING;
 * Comprehensive view of Mco Source monitoring * 
 ******************************************************************************************/
 DROP VIEW IF EXISTS mco_data.v_source_monitoring CASCADE;
-CREATE OR REPLACE VIEW mco_data.v_source_monitoring AS
+CREATE OR REPLACE VIEW mco_data.v_source_monitoring 
+WITH (security_invoker = true) AS
 SELECT
     mr.batch_id,
     mr.batch_guid,
@@ -69,7 +70,8 @@ INNER JOIN techbd_udi_ingress.tenants m
 * Comprehensive view of Mco Error monitoring * 
 ******************************************************************************************/
 drop view if exists mco_data.v_error_monitoring cascade;
-create or replace view mco_data.v_error_monitoring as
+create or replace view mco_data.v_error_monitoring 
+WITH (security_invoker = true) AS
  select
 	mrel.batch_id,
 	mr.batch_guid,
@@ -89,6 +91,30 @@ join mco_data.mco_records mr on
 left join techbd_udi_ingress.tenants m on
 	mr.tenant_id = m.tenant_id
 where
-	coalesce(mrel.error_json->>'message', '') <> ''
-order by
-	mrel.created_on_utc desc ;    
+	coalesce(mrel.error_json->>'message', '') <> ''; 
+
+
+/*******************************************************************************************
+* Comprehensive view of Mco Error monitoring Details* 
+******************************************************************************************/
+DROP VIEW IF EXISTS mco_data.v_source_monitoring_details CASCADE;
+CREATE OR REPLACE VIEW mco_data.v_source_monitoring_details 
+WITH (security_invoker = true) AS
+SELECT
+    batch_details_id,
+    batch_details_guid,
+    current_file_name,
+    status,
+    total_records,
+    processed_count,
+    errored_count,
+    file_size_in_kb,
+    reporting_month,
+    created_on_utc,
+    qa_completed_time,
+    sent_to_datalake_time,
+    sent_to_mco_time,
+    updated_on_utc,
+    batch_id::text AS batch_id
+FROM mco_data.mco_record_details 
+ORDER BY created_on_utc DESC;    

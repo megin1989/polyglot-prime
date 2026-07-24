@@ -251,3 +251,9 @@ SET
 parent_scr_id = (SELECT scr_id FROM techbd_udi_ingress.idp_screens WHERE scr_code = 'scr_CSV_Data_Quality')
 where
 scr_code = 'scr_CSV_Issues_Summary' or scr_code = 'scr_CSV_Issues';
+
+INSERT INTO techbd_udi_ingress.idp_screens
+(scr_code, scr_name, description, scr_type, scr_group, mnu_id, order_no, is_active, provenance, created_by)
+VALUES 
+('scr_Error_Monitoring', 'Error Monitoring', 'Error Monitoring screen', 'page','data', 8, 2, TRUE, 'Hub UI', CURRENT_USER)
+ON CONFLICT (scr_code) DO NOTHING;
