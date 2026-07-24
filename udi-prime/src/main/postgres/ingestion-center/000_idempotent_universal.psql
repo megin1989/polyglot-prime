@@ -180,9 +180,17 @@ BEGIN
    
    SELECT tenant_id INTO v_tenant_id
    FROM techbd_udi_ingress.tenants
-   WHERE tenant_name = LOWER(p_tenant_name);
+   WHERE LOWER(tenant_name) = LOWER(p_tenant_name);
    
    IF v_tenant_id IS NULL THEN
+      IF p_provenance = 'register_user_interaction' THEN 
+			-- For the user UI interactions, no need to save a new tenant
+			RETURN json_build_object(
+		          'status','error',
+		          'message','Tenant Name not exists in the tenants table.'
+		      );
+	  END IF;
+
       v_tenant_id := gen_random_uuid();
 
       INSERT INTO techbd_udi_ingress.tenants (

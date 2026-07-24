@@ -473,7 +473,7 @@ BEGIN
     PERFORM set_config('jwt.claims.tenants',coalesce(v_tenant_ids,''),false);
     PERFORM set_config('jwt.claims.is_admin',v_is_admin::text,false);
 
-    RETURN 'SUCCESS';
+    RETURN v_tenant_ids;
 END;
 $function$
 ;

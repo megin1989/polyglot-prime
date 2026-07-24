@@ -19,7 +19,7 @@ SELECT
     mr.batch_id,
     mr.batch_guid,
     mr.tenant_id,
-    m.tenant_name AS mco_code,
+    m.tenant_short_code AS mco_code,
     CASE
         WHEN mr.sent_to_mco_time IS NOT NULL THEN 'Sent To MCO'
         WHEN mr.sent_to_datalake_time IS NOT NULL THEN 'Sent To Data Lake'
@@ -74,7 +74,7 @@ create or replace view mco_data.v_error_monitoring as
 	mrel.batch_id,
 	mr.batch_guid,
 	mr.tenant_id,
-	m.tenant_name as mco_code,
+	m.tenant_short_code as mco_code,
 	mr.root_file_name,
 	m.tenant_displayname as mco_name,
 	mrel.created_on_utc,
